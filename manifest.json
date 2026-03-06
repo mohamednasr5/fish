@@ -2,7 +2,7 @@
   "name": "مزرعة الاستزراع السمكي",
   "short_name": "مزرعة السمك",
   "description": "تطبيق إدارة مزارع الاستزراع السمكي",
-  "start_url": "./index.html",
+  "start_url": "https://mohamednasr5.github.io/fish/index.html",
   "display": "standalone",
   "background_color": "#04111f",
   "theme_color": "#0a1628",
