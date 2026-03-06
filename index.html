@@ -13,11 +13,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
 
-<!-- Firebase -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
   import { getDatabase, ref, set, get, push, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-
   const firebaseConfig = {
     apiKey: "AIzaSyDTu6HtZTejCP1Qi-4nFqMJ9B5HwcopgWo",
     authDomain: "fish-230a0.firebaseapp.com",
@@ -28,757 +26,155 @@
     appId: "1:39831983482:web:241f0277276d8e075d72c3",
     measurementId: "G-HEY466LSER"
   };
-
   const app = initializeApp(firebaseConfig);
   const db = getDatabase(app);
   window.db = db;
-  window.dbRef = ref;
-  window.dbSet = set;
-  window.dbGet = get;
-  window.dbPush = push;
-  window.dbOnValue = onValue;
-  window.dbUpdate = update;
-  window.dbRemove = remove;
+  window.dbRef = ref; window.dbSet = set; window.dbGet = get;
+  window.dbPush = push; window.dbOnValue = onValue;
+  window.dbUpdate = update; window.dbRemove = remove;
   window.firebaseReady = true;
   document.dispatchEvent(new Event('firebaseReady'));
 </script>
 
 <style>
 :root {
-  --deep: #04111f;
-  --ocean: #071e35;
-  --mid: #0a2d4a;
-  --teal: #00b4d8;
-  --cyan: #00e5ff;
-  --gold: #ffd166;
-  --coral: #ff6b6b;
-  --green: #06d6a0;
-  --text: #e8f4fd;
-  --muted: #7da9c4;
-  --glass: rgba(0,180,216,0.08);
-  --glass-border: rgba(0,229,255,0.15);
-  --shadow: 0 8px 32px rgba(0,0,0,0.4);
-  --r: 16px;
-}
-
-* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
-html, body {
-  height: 100%;
-  background: var(--deep);
-  color: var(--text);
-  font-family: 'Cairo', 'Tajawal', sans-serif;
-  overflow-x: hidden;
-  overscroll-behavior: none;
-}
-
-/* Animated Background */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background: 
-    radial-gradient(ellipse 80% 50% at 20% 10%, rgba(0,180,216,0.12) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 40% at 80% 80%, rgba(0,229,255,0.08) 0%, transparent 50%),
-    radial-gradient(ellipse 40% 60% at 50% 50%, rgba(6,214,160,0.05) 0%, transparent 60%);
-  pointer-events: none;
-  z-index: 0;
-  animation: bgPulse 8s ease-in-out infinite alternate;
-}
-
-@keyframes bgPulse {
-  0% { opacity: 0.7; }
-  100% { opacity: 1; }
-}
-
-/* Floating bubbles */
-.bubble {
-  position: fixed;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(0,229,255,0.15), transparent);
-  pointer-events: none;
-  animation: float linear infinite;
-  z-index: 0;
-}
-.bubble:nth-child(1) { width:8px; height:8px; left:10%; animation-duration:12s; animation-delay:-2s; }
-.bubble:nth-child(2) { width:12px; height:12px; left:25%; animation-duration:16s; animation-delay:-5s; }
-.bubble:nth-child(3) { width:6px; height:6px; left:60%; animation-duration:10s; animation-delay:-8s; }
-.bubble:nth-child(4) { width:10px; height:10px; left:80%; animation-duration:14s; animation-delay:-1s; }
-.bubble:nth-child(5) { width:5px; height:5px; left:45%; animation-duration:18s; animation-delay:-6s; }
-
-@keyframes float {
-  0% { bottom: -20px; opacity: 0; transform: translateX(0); }
-  10% { opacity: 1; }
-  90% { opacity: 1; }
-  100% { bottom: 100vh; opacity: 0; transform: translateX(20px); }
-}
-
-/* App Shell */
-#app {
-  position: relative;
-  z-index: 1;
-  min-height: 100dvh;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Header */
-.header {
-  background: rgba(4,17,31,0.9);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid var(--glass-border);
-  padding: 16px 20px 12px;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
-.header-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.logo {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.logo-icon {
-  width: 42px;
-  height: 42px;
-  background: linear-gradient(135deg, var(--teal), var(--cyan));
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 22px;
-  box-shadow: 0 4px 15px rgba(0,180,216,0.4);
-  animation: pulse 3s ease-in-out infinite;
-}
-@keyframes pulse {
-  0%, 100% { box-shadow: 0 4px 15px rgba(0,180,216,0.4); }
-  50% { box-shadow: 0 4px 25px rgba(0,229,255,0.6); }
-}
-.logo-text { line-height: 1.2; }
-.logo-text h1 { font-size: 16px; font-weight: 800; color: var(--cyan); }
-.logo-text p { font-size: 11px; color: var(--muted); }
-
-.install-btn {
-  background: linear-gradient(135deg, var(--teal), var(--cyan));
-  color: var(--deep);
-  border: none;
-  border-radius: 10px;
-  padding: 8px 14px;
-  font-family: 'Cairo', sans-serif;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  transition: all 0.3s;
-  white-space: nowrap;
-}
-.install-btn:active { transform: scale(0.95); }
-.install-btn.hidden { display: none; }
-
-/* Nav Tabs */
-.nav {
-  display: flex;
-  gap: 6px;
-  margin-top: 12px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  padding-bottom: 2px;
-}
-.nav::-webkit-scrollbar { display: none; }
-.nav-btn {
-  flex-shrink: 0;
-  background: transparent;
-  border: 1px solid var(--glass-border);
-  border-radius: 20px;
-  padding: 7px 16px;
-  font-family: 'Cairo', sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--muted);
-  cursor: pointer;
-  transition: all 0.3s;
-  white-space: nowrap;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-.nav-btn.active {
-  background: linear-gradient(135deg, var(--teal), var(--cyan));
-  color: var(--deep);
-  border-color: transparent;
-  box-shadow: 0 4px 15px rgba(0,180,216,0.35);
-}
-.nav-btn:active { transform: scale(0.95); }
-
-/* Main Content */
-.main {
-  flex: 1;
-  padding: 20px 16px;
-  padding-bottom: 30px;
-  overflow-y: auto;
-}
-
-/* Page Sections */
-.page { display: none; animation: fadeIn 0.4s ease; }
-.page.active { display: block; }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-/* Cards */
-.card {
-  background: var(--glass);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--r);
-  padding: 18px;
-  margin-bottom: 14px;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  transition: all 0.3s;
-  position: relative;
-  overflow: hidden;
-}
-.card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--teal), transparent);
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-.card:hover::before { opacity: 1; }
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 14px;
-}
-.card-title {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--cyan);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.card-title .icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-}
-
-/* Section Cards */
-.section-card {
-  background: linear-gradient(135deg, rgba(0,180,216,0.1), rgba(0,229,255,0.05));
-  border: 1px solid rgba(0,229,255,0.2);
-  border-radius: var(--r);
-  padding: 16px;
-  margin-bottom: 12px;
-  position: relative;
-  overflow: hidden;
-  transition: all 0.3s;
-  cursor: pointer;
-}
-.section-card:active { transform: scale(0.98); }
-.section-card .sec-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.section-name {
-  font-size: 16px;
-  font-weight: 800;
-  color: var(--cyan);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.section-badge {
-  background: rgba(0,229,255,0.15);
-  border: 1px solid rgba(0,229,255,0.3);
-  border-radius: 20px;
-  padding: 3px 10px;
-  font-size: 11px;
-  color: var(--cyan);
-  font-weight: 600;
-}
-.fish-list {
-  margin-top: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.fish-item {
-  background: rgba(0,0,0,0.2);
-  border-radius: 10px;
-  padding: 10px 14px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.fish-info { display: flex; align-items: center; gap: 8px; }
-.fish-name { font-size: 13px; font-weight: 600; color: var(--text); }
-.fish-date { font-size: 11px; color: var(--muted); margin-top: 2px; }
-.fish-weight {
-  font-size: 14px;
-  font-weight: 800;
-  color: var(--gold);
-}
-.fish-weight span { font-size: 10px; font-weight: 400; color: var(--muted); }
-
-/* Grid */
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
-
-/* Stats */
-.stat-card {
-  background: var(--glass);
-  border: 1px solid var(--glass-border);
-  border-radius: 14px;
-  padding: 16px;
-  text-align: center;
-  position: relative;
-  overflow: hidden;
-}
-.stat-card .stat-val {
-  font-size: 22px;
-  font-weight: 900;
-  line-height: 1;
-}
-.stat-card .stat-lbl {
-  font-size: 11px;
-  color: var(--muted);
-  margin-top: 4px;
-  font-weight: 500;
-}
-.stat-glow {
-  position: absolute;
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  opacity: 0.15;
-  top: -20px;
-  right: -10px;
-  filter: blur(15px);
-}
-
-/* Form Elements */
-.form-group {
-  margin-bottom: 14px;
-}
-.form-label {
-  display: block;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--muted);
-  margin-bottom: 7px;
-}
-.form-control {
-  width: 100%;
-  background: rgba(0,0,0,0.3);
-  border: 1px solid var(--glass-border);
-  border-radius: 10px;
-  padding: 12px 14px;
-  font-family: 'Cairo', sans-serif;
-  font-size: 14px;
-  color: var(--text);
-  outline: none;
-  transition: all 0.3s;
-  -webkit-appearance: none;
-  appearance: none;
-}
-.form-control:focus {
-  border-color: var(--teal);
-  background: rgba(0,180,216,0.08);
-  box-shadow: 0 0 0 3px rgba(0,180,216,0.15);
-}
-select.form-control option { background: #071e35; color: var(--text); }
-
-/* Toggle Group */
-.toggle-group {
-  display: flex;
-  gap: 8px;
-}
-.toggle-btn {
-  flex: 1;
-  background: rgba(0,0,0,0.3);
-  border: 1px solid var(--glass-border);
-  border-radius: 10px;
-  padding: 11px;
-  font-family: 'Cairo', sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--muted);
-  cursor: pointer;
-  transition: all 0.3s;
-  text-align: center;
-}
-.toggle-btn.active {
-  background: linear-gradient(135deg, rgba(0,180,216,0.25), rgba(0,229,255,0.15));
-  border-color: var(--teal);
-  color: var(--cyan);
-}
-.toggle-btn:active { transform: scale(0.97); }
-
-/* Buttons */
-.btn {
-  width: 100%;
-  background: linear-gradient(135deg, var(--teal), var(--cyan));
-  color: var(--deep);
-  border: none;
-  border-radius: 12px;
-  padding: 14px;
-  font-family: 'Cairo', sans-serif;
-  font-size: 15px;
-  font-weight: 800;
-  cursor: pointer;
-  transition: all 0.3s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  letter-spacing: 0.3px;
-}
-.btn:active { transform: scale(0.97); box-shadow: 0 2px 10px rgba(0,180,216,0.3); }
-.btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn-danger {
-  background: linear-gradient(135deg, #e63946, #ff6b6b);
-}
-.btn-gold {
-  background: linear-gradient(135deg, #f4a261, var(--gold));
-}
-.btn-green {
-  background: linear-gradient(135deg, #0a8a6e, var(--green));
-}
-.btn-sm {
-  width: auto;
-  padding: 8px 16px;
-  font-size: 12px;
-  border-radius: 8px;
-}
-
-/* Feed Stock Cards */
-.feed-card {
-  border-radius: 14px;
-  padding: 16px;
-  margin-bottom: 10px;
-  position: relative;
-  overflow: hidden;
-}
-.feed-card.p30 { background: linear-gradient(135deg, rgba(0,229,255,0.12), rgba(0,180,216,0.06)); border: 1px solid rgba(0,229,255,0.25); }
-.feed-card.p18 { background: linear-gradient(135deg, rgba(6,214,160,0.12), rgba(6,214,160,0.06)); border: 1px solid rgba(6,214,160,0.25); }
-.feed-card.p25 { background: linear-gradient(135deg, rgba(255,209,102,0.12), rgba(255,209,102,0.06)); border: 1px solid rgba(255,209,102,0.25); }
-.feed-pct {
-  font-size: 28px;
-  font-weight: 900;
-  line-height: 1;
-}
-.feed-card.p30 .feed-pct { color: var(--cyan); }
-.feed-card.p18 .feed-pct { color: var(--green); }
-.feed-card.p25 .feed-pct { color: var(--gold); }
-.feed-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
-.feed-stocks { display: flex; gap: 8px; margin-top: 12px; }
-.feed-type-badge {
-  flex: 1;
-  text-align: center;
-  border-radius: 8px;
-  padding: 8px 6px;
-  background: rgba(0,0,0,0.25);
-}
-.feed-type-badge .type-name { font-size: 11px; color: var(--muted); font-weight: 500; }
-.feed-type-badge .type-val { font-size: 15px; font-weight: 800; margin-top: 2px; }
-
-/* Log Items */
-.log-item {
-  background: rgba(0,0,0,0.2);
-  border: 1px solid var(--glass-border);
-  border-radius: 12px;
-  padding: 12px 14px;
-  margin-bottom: 8px;
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  animation: slideIn 0.3s ease;
-}
-@keyframes slideIn { from { opacity:0; transform: translateX(-10px); } to { opacity:1; transform: translateX(0); } }
-.log-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  flex-shrink: 0;
-}
-.log-icon.feed-out { background: rgba(255,107,107,0.2); }
-.log-icon.fish-in { background: rgba(6,214,160,0.2); }
-.log-icon.fish-out { background: rgba(255,209,102,0.2); }
-.log-body { flex: 1; }
-.log-title { font-size: 13px; font-weight: 700; color: var(--text); }
-.log-detail { font-size: 11px; color: var(--muted); margin-top: 3px; line-height: 1.6; }
-.log-time { font-size: 10px; color: var(--muted); margin-top: 4px; }
-
-/* Modal */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.7);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  z-index: 200;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.3s;
-}
-.modal-overlay.open {
-  opacity: 1;
-  pointer-events: all;
-}
-.modal {
-  background: var(--ocean);
-  border: 1px solid var(--glass-border);
-  border-radius: 24px 24px 0 0;
-  width: 100%;
-  max-width: 600px;
-  padding: 20px;
-  padding-bottom: max(20px, env(safe-area-inset-bottom));
-  transform: translateY(100%);
-  transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1);
-  max-height: 92dvh;
-  overflow-y: auto;
-}
-.modal-overlay.open .modal {
-  transform: translateY(0);
-}
-.modal-handle {
-  width: 40px;
-  height: 4px;
-  background: var(--glass-border);
-  border-radius: 2px;
-  margin: 0 auto 18px;
-}
-.modal-title {
-  font-size: 17px;
-  font-weight: 800;
-  color: var(--cyan);
-  margin-bottom: 18px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-/* Toast */
-.toast {
-  position: fixed;
-  bottom: 30px;
-  left: 50%;
-  transform: translateX(-50%) translateY(20px);
-  background: rgba(4,17,31,0.95);
-  border: 1px solid var(--glass-border);
-  border-radius: 20px;
-  padding: 12px 20px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text);
-  z-index: 300;
-  opacity: 0;
-  transition: all 0.3s;
-  backdrop-filter: blur(20px);
-  white-space: nowrap;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  max-width: 90vw;
-}
-.toast.show {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-}
-.toast.success { border-color: rgba(6,214,160,0.5); }
-.toast.error { border-color: rgba(255,107,107,0.5); }
-
-/* Section details expand */
-.section-expand {
-  display: none;
-  padding-top: 12px;
-  border-top: 1px solid var(--glass-border);
-  margin-top: 12px;
-  animation: fadeIn 0.3s ease;
-}
-.section-expand.open { display: block; }
-
-/* Page title */
-.page-title {
-  font-size: 20px;
-  font-weight: 900;
-  color: var(--text);
-  margin-bottom: 16px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-/* Empty state */
-.empty {
-  text-align: center;
-  padding: 40px 20px;
-  color: var(--muted);
-}
-.empty .empty-icon { font-size: 40px; margin-bottom: 10px; opacity: 0.5; }
-.empty p { font-size: 14px; }
-
-/* Delete btn */
-.del-btn {
-  background: rgba(255,107,107,0.15);
-  border: 1px solid rgba(255,107,107,0.3);
-  border-radius: 8px;
-  padding: 6px 10px;
-  color: var(--coral);
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.2s;
-}
-.del-btn:active { background: rgba(255,107,107,0.3); }
-
-/* Progress bar */
-.progress-bar {
-  height: 6px;
-  background: rgba(0,0,0,0.3);
-  border-radius: 3px;
-  overflow: hidden;
-  margin-top: 8px;
-}
-.progress-fill {
-  height: 100%;
-  border-radius: 3px;
-  transition: width 0.8s cubic-bezier(0.34,1.56,0.64,1);
-}
-
-/* Loading */
-.loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 30px;
-  color: var(--muted);
-  font-size: 14px;
-}
-.spinner {
-  width: 20px;
-  height: 20px;
-  border: 2px solid var(--glass-border);
-  border-top-color: var(--teal);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* Safe area bottom padding */
-.main { padding-bottom: max(30px, calc(env(safe-area-inset-bottom) + 20px)); }
-
-/* Scrollbar */
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 2px; }
-
-/* Fish emoji colors */
-.fish-bouri { color: #90e0ef; }
-.fish-tobar { color: #ffd166; }
-.fish-shabbar { color: #06d6a0; }
-.fish-bayad { color: #f8a4c0; }
-
-/* Water wave animation */
-@keyframes wave {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
-}
-
-.section-card .water {
-  position: absolute;
-  bottom: 0; left: 0; right: 0;
-  height: 30px;
-  overflow: hidden;
-  opacity: 0.15;
-}
-.section-card .water svg {
-  width: 200%;
-  height: 100%;
-  animation: wave 4s linear infinite;
-}
-
-/* Dashboard summary row */
-.summary-row {
-  display: flex;
-  gap: 10px;
-  overflow-x: auto;
-  padding-bottom: 4px;
-  margin-bottom: 16px;
-  scrollbar-width: none;
-}
-.summary-row::-webkit-scrollbar { display: none; }
-.summary-chip {
-  flex-shrink: 0;
-  background: var(--glass);
-  border: 1px solid var(--glass-border);
-  border-radius: 20px;
-  padding: 10px 16px;
-  text-align: center;
-  min-width: 100px;
-}
-.summary-chip .val { font-size: 18px; font-weight: 900; }
-.summary-chip .lbl { font-size: 10px; color: var(--muted); margin-top: 2px; }
-
-/* Section icon */
-.sec-icon {
-  width: 36px; height: 36px;
-  border-radius: 10px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 18px;
-  background: linear-gradient(135deg, rgba(0,180,216,0.25), rgba(0,229,255,0.1));
-}
-
-/* Date badge */
-.date-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: rgba(0,0,0,0.2);
-  border-radius: 6px;
-  padding: 3px 8px;
-  font-size: 11px;
-  color: var(--muted);
-  border: 1px solid rgba(255,255,255,0.05);
-}
+  --deep:#04111f; --ocean:#071e35; --mid:#0a2d4a;
+  --teal:#00b4d8; --cyan:#00e5ff; --gold:#ffd166;
+  --coral:#ff6b6b; --green:#06d6a0; --text:#e8f4fd;
+  --muted:#7da9c4; --glass:rgba(0,180,216,0.08);
+  --glass-border:rgba(0,229,255,0.15); --r:16px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;background:var(--deep);color:var(--text);font-family:'Cairo','Tajawal',sans-serif;overflow-x:hidden;overscroll-behavior:none;}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 50% at 20% 10%,rgba(0,180,216,.12) 0%,transparent 60%),radial-gradient(ellipse 60% 40% at 80% 80%,rgba(0,229,255,.08) 0%,transparent 50%),radial-gradient(ellipse 40% 60% at 50% 50%,rgba(6,214,160,.05) 0%,transparent 60%);pointer-events:none;z-index:0;animation:bgPulse 8s ease-in-out infinite alternate;}
+@keyframes bgPulse{0%{opacity:.7}100%{opacity:1}}
+.bubble{position:fixed;border-radius:50%;background:radial-gradient(circle,rgba(0,229,255,.15),transparent);pointer-events:none;animation:float linear infinite;z-index:0;}
+.bubble:nth-child(1){width:8px;height:8px;left:10%;animation-duration:12s;animation-delay:-2s;}
+.bubble:nth-child(2){width:12px;height:12px;left:25%;animation-duration:16s;animation-delay:-5s;}
+.bubble:nth-child(3){width:6px;height:6px;left:60%;animation-duration:10s;animation-delay:-8s;}
+.bubble:nth-child(4){width:10px;height:10px;left:80%;animation-duration:14s;animation-delay:-1s;}
+.bubble:nth-child(5){width:5px;height:5px;left:45%;animation-duration:18s;animation-delay:-6s;}
+@keyframes float{0%{bottom:-20px;opacity:0;transform:translateX(0)}10%{opacity:1}90%{opacity:1}100%{bottom:100vh;opacity:0;transform:translateX(20px)}}
+#app{position:relative;z-index:1;min-height:100dvh;display:flex;flex-direction:column;}
+.header{background:rgba(4,17,31,.9);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--glass-border);padding:16px 20px 12px;position:sticky;top:0;z-index:100;}
+.header-top{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.logo{display:flex;align-items:center;gap:10px;}
+.logo-icon{width:42px;height:42px;background:linear-gradient(135deg,var(--teal),var(--cyan));border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 4px 15px rgba(0,180,216,.4);animation:pulse 3s ease-in-out infinite;}
+@keyframes pulse{0%,100%{box-shadow:0 4px 15px rgba(0,180,216,.4)}50%{box-shadow:0 4px 25px rgba(0,229,255,.6)}}
+.logo-text h1{font-size:16px;font-weight:800;color:var(--cyan);line-height:1.2;}
+.logo-text p{font-size:11px;color:var(--muted);}
+.install-btn{background:linear-gradient(135deg,var(--teal),var(--cyan));color:var(--deep);border:none;border-radius:10px;padding:8px 14px;font-family:'Cairo',sans-serif;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .3s;white-space:nowrap;}
+.install-btn:active{transform:scale(.95);}
+.install-btn.hidden{display:none;}
+.nav{display:flex;gap:6px;margin-top:12px;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none;padding-bottom:2px;}
+.nav::-webkit-scrollbar{display:none;}
+.nav-btn{flex-shrink:0;background:transparent;border:1px solid var(--glass-border);border-radius:20px;padding:7px 16px;font-family:'Cairo',sans-serif;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .3s;white-space:nowrap;display:flex;align-items:center;gap:5px;}
+.nav-btn.active{background:linear-gradient(135deg,var(--teal),var(--cyan));color:var(--deep);border-color:transparent;box-shadow:0 4px 15px rgba(0,180,216,.35);}
+.nav-btn:active{transform:scale(.95);}
+.main{flex:1;padding:20px 16px;padding-bottom:max(80px,calc(env(safe-area-inset-bottom) + 70px));overflow-y:auto;}
+.page{display:none;animation:fadeIn .4s ease;}
+.page.active{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.card{background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--r);padding:18px;margin-bottom:14px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);position:relative;overflow:hidden;}
+.card-title{font-size:15px;font-weight:700;color:var(--cyan);display:flex;align-items:center;gap:8px;margin-bottom:14px;}
+.section-card{background:linear-gradient(135deg,rgba(0,180,216,.1),rgba(0,229,255,.05));border:1px solid rgba(0,229,255,.2);border-radius:var(--r);padding:16px;margin-bottom:12px;position:relative;overflow:hidden;}
+.sec-header{display:flex;align-items:center;justify-content:space-between;cursor:pointer;}
+.section-name{font-size:16px;font-weight:800;color:var(--cyan);display:flex;align-items:center;gap:8px;}
+.section-badge{background:rgba(0,229,255,.15);border:1px solid rgba(0,229,255,.3);border-radius:20px;padding:3px 10px;font-size:11px;color:var(--cyan);font-weight:600;}
+.sec-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;}
+.section-expand{display:none;padding-top:12px;border-top:1px solid var(--glass-border);margin-top:12px;animation:fadeIn .3s ease;}
+.section-expand.open{display:block;}
+.fish-list{display:flex;flex-direction:column;gap:8px;}
+.fish-item{background:rgba(0,0,0,.2);border-radius:10px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;}
+.fish-info{display:flex;align-items:center;gap:8px;}
+.fish-name{font-size:13px;font-weight:600;color:var(--text);}
+.fish-date{font-size:11px;color:var(--muted);margin-top:2px;}
+.fish-weight{font-size:14px;font-weight:800;color:var(--gold);}
+.summary-row{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;margin-bottom:16px;scrollbar-width:none;}
+.summary-row::-webkit-scrollbar{display:none;}
+.summary-chip{flex-shrink:0;background:var(--glass);border:1px solid var(--glass-border);border-radius:20px;padding:10px 16px;text-align:center;min-width:100px;}
+.summary-chip .val{font-size:18px;font-weight:900;}
+.summary-chip .lbl{font-size:10px;color:var(--muted);margin-top:2px;}
+.form-group{margin-bottom:14px;}
+.form-label{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:7px;}
+.form-control{width:100%;background:rgba(0,0,0,.3);border:1px solid var(--glass-border);border-radius:10px;padding:12px 14px;font-family:'Cairo',sans-serif;font-size:14px;color:var(--text);outline:none;transition:all .3s;-webkit-appearance:none;appearance:none;}
+.form-control:focus{border-color:var(--teal);background:rgba(0,180,216,.08);box-shadow:0 0 0 3px rgba(0,180,216,.15);}
+select.form-control option{background:#071e35;color:var(--text);}
+.toggle-group{display:flex;gap:6px;flex-wrap:wrap;}
+.toggle-btn{flex:1;min-width:80px;background:rgba(0,0,0,.3);border:1px solid var(--glass-border);border-radius:10px;padding:10px 8px;font-family:'Cairo',sans-serif;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .3s;text-align:center;}
+.toggle-btn.active{background:linear-gradient(135deg,rgba(0,180,216,.25),rgba(0,229,255,.15));border-color:var(--teal);color:var(--cyan);}
+.toggle-btn:active{transform:scale(.97);}
+.btn{width:100%;background:linear-gradient(135deg,var(--teal),var(--cyan));color:var(--deep);border:none;border-radius:12px;padding:14px;font-family:'Cairo',sans-serif;font-size:15px;font-weight:800;cursor:pointer;transition:all .3s;display:flex;align-items:center;justify-content:center;gap:8px;}
+.btn:active{transform:scale(.97);}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+.btn-danger{background:linear-gradient(135deg,#e63946,#ff6b6b);}
+.btn-gold{background:linear-gradient(135deg,#f4a261,var(--gold));}
+.btn-green{background:linear-gradient(135deg,#0a8a6e,var(--green));}
+.btn-sm{width:auto;padding:7px 13px;font-size:12px;border-radius:8px;}
+.btn-edit{background:rgba(0,180,216,.15);border:1px solid rgba(0,180,216,.3);border-radius:8px;padding:6px 10px;color:var(--teal);cursor:pointer;font-size:13px;transition:all .2s;font-family:'Cairo',sans-serif;}
+.btn-edit:active{background:rgba(0,180,216,.3);}
+.del-btn{background:rgba(255,107,107,.15);border:1px solid rgba(255,107,107,.3);border-radius:8px;padding:6px 10px;color:var(--coral);cursor:pointer;font-size:13px;transition:all .2s;font-family:'Cairo',sans-serif;}
+.del-btn:active{background:rgba(255,107,107,.3);}
+.feed-card{border-radius:14px;padding:16px;margin-bottom:10px;position:relative;overflow:hidden;}
+.feed-card.p30{background:linear-gradient(135deg,rgba(0,229,255,.12),rgba(0,180,216,.06));border:1px solid rgba(0,229,255,.25);}
+.feed-card.p18{background:linear-gradient(135deg,rgba(6,214,160,.12),rgba(6,214,160,.06));border:1px solid rgba(6,214,160,.25);}
+.feed-card.p25{background:linear-gradient(135deg,rgba(255,209,102,.12),rgba(255,209,102,.06));border:1px solid rgba(255,209,102,.25);}
+.feed-pct{font-size:28px;font-weight:900;line-height:1;}
+.feed-card.p30 .feed-pct{color:var(--cyan);}
+.feed-card.p18 .feed-pct{color:var(--green);}
+.feed-card.p25 .feed-pct{color:var(--gold);}
+.feed-sub{font-size:11px;color:var(--muted);margin-top:2px;}
+.feed-stocks{display:flex;gap:8px;margin-top:10px;}
+.feed-type-badge{flex:1;text-align:center;border-radius:10px;padding:10px 6px;background:rgba(0,0,0,.25);}
+.feed-type-badge .type-name{font-size:10px;color:var(--muted);font-weight:600;}
+.feed-type-badge .type-val{font-size:14px;font-weight:800;margin-top:4px;}
+.feed-type-badge .type-bags{font-size:10px;color:var(--muted);margin-top:3px;line-height:1.5;}
+.log-item{background:rgba(0,0,0,.2);border:1px solid var(--glass-border);border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:flex-start;gap:12px;animation:slideIn .3s ease;}
+@keyframes slideIn{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:translateX(0)}}
+.log-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.log-icon.feed-out{background:rgba(255,107,107,.2);}
+.log-icon.fish-in{background:rgba(6,214,160,.2);}
+.log-icon.store-in{background:rgba(0,229,255,.15);}
+.log-body{flex:1;min-width:0;}
+.log-title{font-size:13px;font-weight:700;color:var(--text);}
+.log-detail{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.7;}
+.log-time{font-size:10px;color:var(--muted);margin-top:4px;}
+.log-actions{display:flex;gap:6px;margin-top:8px;}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:200;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s;}
+.modal-overlay.open{opacity:1;pointer-events:all;}
+.modal{background:var(--ocean);border:1px solid var(--glass-border);border-radius:24px 24px 0 0;width:100%;max-width:600px;padding:20px;padding-bottom:max(20px,env(safe-area-inset-bottom));transform:translateY(100%);transition:transform .4s cubic-bezier(.34,1.56,.64,1);max-height:92dvh;overflow-y:auto;}
+.modal-overlay.open .modal{transform:translateY(0);}
+.modal-handle{width:40px;height:4px;background:var(--glass-border);border-radius:2px;margin:0 auto 18px;}
+.modal-title{font-size:17px;font-weight:800;color:var(--cyan);margin-bottom:18px;display:flex;align-items:center;gap:8px;}
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:rgba(4,17,31,.95);border:1px solid var(--glass-border);border-radius:20px;padding:12px 20px;font-size:13px;font-weight:600;color:var(--text);z-index:300;opacity:0;transition:all .3s;backdrop-filter:blur(20px);white-space:nowrap;display:flex;align-items:center;gap:8px;max-width:90vw;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast.success{border-color:rgba(6,214,160,.5);}
+.toast.error{border-color:rgba(255,107,107,.5);}
+.page-title{font-size:20px;font-weight:900;color:var(--text);margin-bottom:16px;display:flex;align-items:center;gap:10px;}
+.empty{text-align:center;padding:40px 20px;color:var(--muted);}
+.empty .empty-icon{font-size:40px;margin-bottom:10px;opacity:.5;}
+.empty p{font-size:14px;}
+.progress-bar{height:6px;background:rgba(0,0,0,.3);border-radius:3px;overflow:hidden;margin-top:8px;}
+.progress-fill{height:100%;border-radius:3px;transition:width .8s cubic-bezier(.34,1.56,.64,1);}
+.loading{display:flex;align-items:center;justify-content:center;gap:8px;padding:30px;color:var(--muted);font-size:14px;}
+.spinner{width:20px;height:20px;border:2px solid var(--glass-border);border-top-color:var(--teal);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-thumb{background:var(--glass-border);border-radius:2px;}
+.water{position:absolute;bottom:0;left:0;right:0;height:30px;overflow:hidden;opacity:.15;}
+.water svg{width:200%;height:100%;animation:wave 4s linear infinite;}
+@keyframes wave{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.info-box{background:rgba(0,180,216,.08);border:1px solid rgba(0,180,216,.2);border-radius:10px;padding:10px 14px;font-size:12px;color:var(--muted);line-height:1.7;}
+.info-box b{color:var(--cyan);}
+@keyframes creditFadeIn{0%{opacity:0;transform:translateY(10px)}100%{opacity:1;transform:translateY(0)}}
 </style>
 </head>
 <body>
 
-<!-- Bubbles -->
-<div class="bubble"></div>
-<div class="bubble"></div>
-<div class="bubble"></div>
-<div class="bubble"></div>
-<div class="bubble"></div>
+<div class="bubble"></div><div class="bubble"></div><div class="bubble"></div>
+<div class="bubble"></div><div class="bubble"></div>
 
 <div id="app">
-  <!-- Header -->
   <header class="header">
     <div class="header-top">
       <div class="logo">
@@ -788,9 +184,7 @@ select.form-control option { background: #071e35; color: var(--text); }
           <p>إدارة ذكية للمزرعة السمكية</p>
         </div>
       </div>
-      <button class="install-btn hidden" id="installBtn" onclick="installApp()">
-        📲 تثبيت
-      </button>
+      <button class="install-btn hidden" id="installBtn" onclick="installApp()">📲 تثبيت</button>
     </div>
     <nav class="nav">
       <button class="nav-btn active" onclick="showPage('dashboard')">🏠 الرئيسية</button>
@@ -801,186 +195,176 @@ select.form-control option { background: #071e35; color: var(--text); }
     </nav>
   </header>
 
-  <!-- Main Content -->
   <main class="main">
 
-    <!-- Dashboard Page -->
+    <!-- DASHBOARD -->
     <div class="page active" id="page-dashboard">
       <div class="page-title">📊 لوحة التحكم</div>
-
-      <!-- Summary row -->
-      <div class="summary-row" id="dashSummary">
-        <div class="summary-chip"><div class="val" id="totalFishKg">—</div><div class="lbl">إجمالي السمك (كجم)</div></div>
-        <div class="summary-chip"><div class="val" id="totalFeedKg">—</div><div class="lbl">إجمالي العلف (كجم)</div></div>
+      <div class="summary-row">
+        <div class="summary-chip"><div class="val" id="totalFishKg">—</div><div class="lbl">إجمالي السمك</div></div>
+        <div class="summary-chip"><div class="val" id="totalFeedKg">—</div><div class="lbl">إجمالي العلف</div></div>
         <div class="summary-chip"><div class="val" id="activeSectors">—</div><div class="lbl">قطاعات نشطة</div></div>
         <div class="summary-chip"><div class="val" id="todayOps">—</div><div class="lbl">عمليات اليوم</div></div>
       </div>
-
-      <!-- Sectors Overview -->
-      <div class="page-title" style="font-size:15px; margin-bottom:12px;">🌊 القطاعات</div>
-      <div id="dashSectors">
-        <div class="loading"><div class="spinner"></div> جاري التحميل...</div>
-      </div>
-
-      <!-- Feed Overview -->
-      <div class="page-title" style="font-size:15px; margin-top:20px; margin-bottom:12px;">🏭 مستوى المخزن</div>
-      <div id="dashFeed">
-        <div class="loading"><div class="spinner"></div> جاري التحميل...</div>
-      </div>
-
-      <!-- Recent Logs -->
-      <div class="page-title" style="font-size:15px; margin-top:20px; margin-bottom:12px;">⏱️ آخر العمليات</div>
-      <div id="dashLogs">
-        <div class="loading"><div class="spinner"></div> جاري التحميل...</div>
-      </div>
+      <div class="page-title" style="font-size:15px;margin-bottom:12px;">🌊 القطاعات</div>
+      <div id="dashSectors"><div class="loading"><div class="spinner"></div> جاري التحميل...</div></div>
+      <div class="page-title" style="font-size:15px;margin-top:20px;margin-bottom:12px;">🏭 مستوى المخزن</div>
+      <div id="dashFeed"><div class="loading"><div class="spinner"></div> جاري التحميل...</div></div>
+      <div class="page-title" style="font-size:15px;margin-top:20px;margin-bottom:12px;">⏱️ آخر العمليات</div>
+      <div id="dashLogs"><div class="loading"><div class="spinner"></div> جاري التحميل...</div></div>
     </div>
 
-    <!-- Sectors Page -->
+    <!-- SECTORS -->
     <div class="page" id="page-sectors">
       <div class="page-title">🌊 إدارة القطاعات</div>
-
-      <div id="sectorsContainer">
-        <div class="loading"><div class="spinner"></div> جاري التحميل...</div>
-      </div>
+      <div id="sectorsContainer"><div class="loading"><div class="spinner"></div> جاري التحميل...</div></div>
     </div>
 
-    <!-- Store Page -->
+    <!-- STORE -->
     <div class="page" id="page-store">
       <div class="page-title">🏭 المخزن</div>
-
-      <!-- Feed stock -->
-      <div id="feedStockContainer">
-        <div class="loading"><div class="spinner"></div> جاري التحميل...</div>
-      </div>
-
-      <!-- Add to store -->
+      <div id="feedStockContainer"><div class="loading"><div class="spinner"></div> جاري التحميل...</div></div>
       <div class="card" style="margin-top:16px;">
         <div class="card-title">➕ إضافة علف للمخزن</div>
-        <div style="margin-top:14px;">
-          <div class="form-group">
-            <label class="form-label">نوع العلف (البروتين)</label>
-            <select class="form-control" id="addFeedType">
-              <option value="30">علف 30%</option>
-              <option value="18">علف 18%</option>
-              <option value="25">علف 25%</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">نوع الطفو</label>
-            <div class="toggle-group">
-              <button class="toggle-btn active" id="storeFloatBtn" onclick="setStoreFloat('float')">🌊 عايم</button>
-              <button class="toggle-btn" id="storeSinkBtn" onclick="setStoreFloat('sink')">⬇️ غاطس</button>
-            </div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">الكمية (كجم)</label>
-            <input type="number" class="form-control" id="addFeedQty" placeholder="مثال: 5000" min="1">
-          </div>
-          <div class="form-group">
-            <label class="form-label">تاريخ الاستلام</label>
-            <input type="date" class="form-control" id="addFeedDate">
-          </div>
-          <button class="btn btn-green" onclick="addFeedToStore()">💾 إضافة للمخزن</button>
+        <div class="form-group">
+          <label class="form-label">نوع العلف (البروتين)</label>
+          <select class="form-control" id="addFeedType">
+            <option value="30">علف 30%</option>
+            <option value="18">علف 18%</option>
+            <option value="25">علف 25%</option>
+          </select>
         </div>
+        <div class="form-group">
+          <label class="form-label">نوع الطفو</label>
+          <div class="toggle-group">
+            <button class="toggle-btn active" id="storeFloatBtn" onclick="setStoreFloat('float')">🌊 عايم</button>
+            <button class="toggle-btn" id="storeSinkBtn" onclick="setStoreFloat('sink')">⬇️ غاطس</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">وحدة الإدخال</label>
+          <div class="toggle-group">
+            <button class="toggle-btn active" id="storeUnit25Btn"  onclick="setStoreUnit('bag25')">🛍️ شيكارة 25 كجم</button>
+            <button class="toggle-btn"        id="storeUnit50Btn"  onclick="setStoreUnit('bag50')">🛍️ شيكارة 50 كجم</button>
+            <button class="toggle-btn"        id="storeUnitTonBtn" onclick="setStoreUnit('ton')">⚖️ طن</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" id="addFeedQtyLabel">العدد (شيكارة 25 كجم)</label>
+          <input type="number" class="form-control" id="addFeedQty" placeholder="أدخل العدد" min="1" step="1" oninput="updateStoreCalc()">
+          <div class="info-box" id="storeCalcInfo" style="margin-top:8px;display:none;"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">تاريخ الاستلام</label>
+          <input type="date" class="form-control" id="addFeedDate">
+        </div>
+        <button class="btn btn-green" onclick="addFeedToStore()">💾 إضافة للمخزن</button>
       </div>
     </div>
 
-    <!-- Feed Page -->
+    <!-- FEED + ADD FISH -->
     <div class="page" id="page-feed">
       <div class="page-title">🍽️ إخراج علف للقطاع</div>
-
       <div class="card">
         <div class="card-title">🐟 بيانات التغذية</div>
-        <div style="margin-top:14px;">
-          <div class="form-group">
-            <label class="form-label">القطاع</label>
-            <select class="form-control" id="feedSector">
-              <option value="sector1">القطاع الأول</option>
-              <option value="sector2">القطاع الثاني</option>
-              <option value="sector3">القطاع الثالث</option>
-              <option value="sarf">الصرف</option>
-              <option value="maghzy">المغزى</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">نوع العلف</label>
-            <select class="form-control" id="feedType">
-              <option value="30">علف 30%</option>
-              <option value="18">علف 18%</option>
-              <option value="25">علف 25%</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">نوع الطفو</label>
-            <div class="toggle-group">
-              <button class="toggle-btn active" id="feedFloatBtn" onclick="setFeedFloat('float')">🌊 عايم</button>
-              <button class="toggle-btn" id="feedSinkBtn" onclick="setFeedFloat('sink')">⬇️ غاطس</button>
-            </div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">الكمية (كجم)</label>
-            <input type="number" class="form-control" id="feedQty" placeholder="الكمية بالكيلو" min="1">
-          </div>
-          <div class="form-group">
-            <label class="form-label">تاريخ التغذية</label>
-            <input type="date" class="form-control" id="feedDate">
-          </div>
-          <div class="form-group">
-            <label class="form-label">ملاحظات (اختياري)</label>
-            <input type="text" class="form-control" id="feedNotes" placeholder="أي ملاحظات إضافية">
-          </div>
-          <div id="feedStockCheck" style="margin-bottom:14px;"></div>
-          <button class="btn" onclick="submitFeed()">✅ تأكيد الإخراج</button>
+        <div class="form-group">
+          <label class="form-label">القطاع</label>
+          <select class="form-control" id="feedSector">
+            <option value="sector1">القطاع الأول</option>
+            <option value="sector2">القطاع الثاني</option>
+            <option value="sector3">القطاع الثالث</option>
+            <option value="sarf">الصرف</option>
+            <option value="maghzy">المغزى</option>
+          </select>
         </div>
+        <div class="form-group">
+          <label class="form-label">نوع العلف</label>
+          <select class="form-control" id="feedType" onchange="updateFeedStockInfo()">
+            <option value="30">علف 30%</option>
+            <option value="18">علف 18%</option>
+            <option value="25">علف 25%</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">نوع الطفو</label>
+          <div class="toggle-group">
+            <button class="toggle-btn active" id="feedFloatBtn" onclick="setFeedFloat('float')">🌊 عايم</button>
+            <button class="toggle-btn" id="feedSinkBtn" onclick="setFeedFloat('sink')">⬇️ غاطس</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">وحدة الإخراج</label>
+          <div class="toggle-group">
+            <button class="toggle-btn active" id="feedUnit25Btn"  onclick="setFeedUnit('bag25')">🛍️ شيكارة 25</button>
+            <button class="toggle-btn"        id="feedUnit50Btn"  onclick="setFeedUnit('bag50')">🛍️ شيكارة 50</button>
+            <button class="toggle-btn"        id="feedUnitTonBtn" onclick="setFeedUnit('ton')">⚖️ طن</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" id="feedQtyLabel">العدد (شيكارة 25 كجم)</label>
+          <input type="number" class="form-control" id="feedQty" placeholder="أدخل العدد" min="1" step="1" oninput="updateFeedCalc()">
+          <div class="info-box" id="feedCalcInfo" style="margin-top:8px;display:none;"></div>
+        </div>
+        <div class="info-box" id="feedStockInfo" style="margin-bottom:14px;">
+          اختر نوع العلف لعرض المتاح في المخزن
+        </div>
+        <div class="form-group">
+          <label class="form-label">تاريخ التغذية</label>
+          <input type="date" class="form-control" id="feedDate">
+        </div>
+        <div class="form-group">
+          <label class="form-label">ملاحظات (اختياري)</label>
+          <input type="text" class="form-control" id="feedNotes" placeholder="أي ملاحظات إضافية">
+        </div>
+        <button class="btn" onclick="submitFeed()">✅ تأكيد الإخراج</button>
       </div>
 
-      <!-- Add Fish to Sector -->
+      <!-- Add Fish -->
       <div class="card" style="margin-top:4px;">
         <div class="card-title">🐠 إضافة أسماك لقطاع</div>
-        <div style="margin-top:14px;">
-          <div class="form-group">
-            <label class="form-label">القطاع</label>
-            <select class="form-control" id="fishSector">
-              <option value="sector1">القطاع الأول</option>
-              <option value="sector2">القطاع الثاني</option>
-              <option value="sector3">القطاع الثالث</option>
-              <option value="sarf">الصرف</option>
-              <option value="maghzy">المغزى</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">نوع السمك</label>
-            <select class="form-control" id="fishType">
-              <option value="بوري">🐟 بوري</option>
-              <option value="طوبار">🐠 طوبار</option>
-              <option value="شبار">🐡 شبار</option>
-              <option value="بياض">🫧 بياض</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">الوزن</label>
-            <div style="display:flex; gap:8px;">
-              <input type="number" class="form-control" id="fishWeight" placeholder="الوزن" min="0" step="0.1" style="flex:2;">
-              <select class="form-control" id="fishUnit" style="flex:1;">
-                <option value="kg">كجم</option>
-                <option value="ton">طن</option>
-              </select>
-            </div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">تاريخ الإضافة</label>
-            <input type="date" class="form-control" id="fishDate">
-          </div>
-          <button class="btn btn-green" onclick="addFishToSector()">🐟 إضافة أسماك</button>
+        <div class="form-group">
+          <label class="form-label">القطاع</label>
+          <select class="form-control" id="fishSector">
+            <option value="sector1">القطاع الأول</option>
+            <option value="sector2">القطاع الثاني</option>
+            <option value="sector3">القطاع الثالث</option>
+            <option value="sarf">الصرف</option>
+            <option value="maghzy">المغزى</option>
+          </select>
         </div>
+        <div class="form-group">
+          <label class="form-label">نوع السمك</label>
+          <select class="form-control" id="fishType">
+            <option value="بوري">🐟 بوري</option>
+            <option value="طوبار">🐠 طوبار</option>
+            <option value="شبار">🐡 شبار</option>
+            <option value="بياض">🫧 بياض</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">وحدة الإدخال</label>
+          <div class="toggle-group">
+            <button class="toggle-btn active" id="fishUnitCountBtn" onclick="setFishUnit('count')">🔢 عدد</button>
+            <button class="toggle-btn"        id="fishUnitKgBtn"    onclick="setFishUnit('kg')">⚖️ كجم</button>
+            <button class="toggle-btn"        id="fishUnitTonBtn"   onclick="setFishUnit('ton')">🏋️ طن</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" id="fishValueLabel">العدد (قطعة)</label>
+          <input type="number" class="form-control" id="fishValue" placeholder="أدخل الكمية" min="0" step="1">
+        </div>
+        <div class="form-group">
+          <label class="form-label">تاريخ الإضافة</label>
+          <input type="date" class="form-control" id="fishDate">
+        </div>
+        <button class="btn btn-green" onclick="addFishToSector()">🐟 إضافة أسماك</button>
       </div>
     </div>
 
-    <!-- Logs Page -->
+    <!-- LOGS -->
     <div class="page" id="page-logs">
       <div class="page-title">📋 سجل العمليات</div>
-
-      <div style="display:flex; gap:8px; margin-bottom:16px;">
+      <div style="display:flex;gap:8px;margin-bottom:16px;">
         <select class="form-control" id="logFilter" onchange="filterLogs()" style="flex:1;">
           <option value="all">الكل</option>
           <option value="feed_out">إخراج علف</option>
@@ -997,21 +381,109 @@ select.form-control option { background: #071e35; color: var(--text); }
           <option value="store">المخزن</option>
         </select>
       </div>
-
-      <div id="logsContainer">
-        <div class="loading"><div class="spinner"></div> جاري التحميل...</div>
-      </div>
+      <div id="logsContainer"><div class="loading"><div class="spinner"></div> جاري التحميل...</div></div>
     </div>
 
   </main>
 </div>
 
-<!-- Modals -->
-<div class="modal-overlay" id="sectorModal" onclick="closeSectorModal(event)">
+<!-- EDIT FISH MODAL -->
+<div class="modal-overlay" id="editFishModal" onclick="closeModal('editFishModal',event)">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-title">🌊 <span id="modalSectorTitle"></span></div>
-    <div id="modalSectorContent"></div>
+    <div class="modal-title">✏️ تعديل بيانات السمك</div>
+    <input type="hidden" id="editFishId">
+    <input type="hidden" id="editFishSectorKey">
+    <div class="form-group">
+      <label class="form-label">نوع السمك</label>
+      <select class="form-control" id="editFishType">
+        <option value="بوري">🐟 بوري</option>
+        <option value="طوبار">🐠 طوبار</option>
+        <option value="شبار">🐡 شبار</option>
+        <option value="بياض">🫧 بياض</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">الكمية</label>
+      <input type="number" class="form-control" id="editFishValue" min="0" step="0.001">
+    </div>
+    <div class="form-group">
+      <label class="form-label">الوحدة</label>
+      <select class="form-control" id="editFishUnit">
+        <option value="count">عدد (قطعة)</option>
+        <option value="kg">كجم</option>
+        <option value="ton">طن</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">التاريخ</label>
+      <input type="date" class="form-control" id="editFishDate">
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-green" onclick="saveEditFish()">💾 حفظ</button>
+      <button class="btn btn-danger" onclick="closeModal('editFishModal')">✕ إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT FEED LOG MODAL -->
+<div class="modal-overlay" id="editFeedModal" onclick="closeModal('editFeedModal',event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">✏️ تعديل سجل إخراج العلف</div>
+    <input type="hidden" id="editLogId">
+    <div class="form-group">
+      <label class="form-label">نوع العلف</label>
+      <select class="form-control" id="editFeedType">
+        <option value="30">علف 30%</option>
+        <option value="18">علف 18%</option>
+        <option value="25">علف 25%</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">القطاع</label>
+      <select class="form-control" id="editFeedSector">
+        <option value="sector1">القطاع الأول</option>
+        <option value="sector2">القطاع الثاني</option>
+        <option value="sector3">القطاع الثالث</option>
+        <option value="sarf">الصرف</option>
+        <option value="maghzy">المغزى</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">الكمية (كجم)</label>
+      <input type="number" class="form-control" id="editFeedQty" min="1">
+    </div>
+    <div class="form-group">
+      <label class="form-label">التاريخ</label>
+      <input type="date" class="form-control" id="editFeedDate">
+    </div>
+    <div class="form-group">
+      <label class="form-label">ملاحظات</label>
+      <input type="text" class="form-control" id="editFeedNotes">
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn" onclick="saveEditFeedLog()">💾 حفظ</button>
+      <button class="btn btn-danger" onclick="closeModal('editFeedModal')">✕ إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT STORE MODAL -->
+<div class="modal-overlay" id="editStoreModal" onclick="closeModal('editStoreModal',event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">✏️ تعديل رصيد المخزن</div>
+    <input type="hidden" id="editStoreKey">
+    <div class="info-box" style="margin-bottom:14px;">تعديل مباشر للرصيد الكلي بالكيلوجرام</div>
+    <div class="form-group">
+      <label class="form-label">الكمية الجديدة (كجم)</label>
+      <input type="number" class="form-control" id="editStoreQty" min="0" step="0.001">
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-gold" onclick="saveEditStore()">💾 تحديث</button>
+      <button class="btn btn-danger" onclick="closeModal('editStoreModal')">✕ إلغاء</button>
+    </div>
   </div>
 </div>
 
@@ -1019,566 +491,546 @@ select.form-control option { background: #071e35; color: var(--text); }
 <div class="toast" id="toast"></div>
 
 <!-- Developer Credit -->
-<div id="devCredit" style="
-  position: fixed;
-  bottom: 0; left: 0; right: 0;
-  z-index: 50;
-  pointer-events: none;
-  display: flex;
-  justify-content: center;
-  padding-bottom: max(10px, env(safe-area-inset-bottom));
-">
-  <a href="https://www.facebook.com/en.mohamed.nasr" target="_blank" rel="noopener" style="
-    pointer-events: all;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: rgba(4,17,31,0.88);
-    border: 1px solid rgba(0,229,255,0.15);
-    border-radius: 30px;
-    padding: 7px 16px 7px 12px;
-    text-decoration: none;
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-    transition: all 0.3s;
-    animation: creditFadeIn 1.2s ease forwards;
-    opacity: 0;
-  " onmouseenter="this.style.borderColor='rgba(24,119,242,0.6)'; this.style.boxShadow='0 4px 24px rgba(24,119,242,0.25)'"
-     onmouseleave="this.style.borderColor='rgba(0,229,255,0.15)'; this.style.boxShadow='0 4px 20px rgba(0,0,0,0.4)'"
-     ontouchstart="this.style.borderColor='rgba(24,119,242,0.6)'"
-     ontouchend="this.style.borderColor='rgba(0,229,255,0.15)'">
-    <!-- Facebook Icon SVG -->
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="12" cy="12" r="12" fill="#1877F2"/>
-      <path d="M16.5 8H14.5C14.2 8 14 8.2 14 8.5V10H16.5L16 12.5H14V19H11.5V12.5H9.5V10H11.5V8.5C11.5 6.6 12.8 5 15 5H16.5V8Z" fill="white"/>
-    </svg>
-    <div style="line-height: 1.25;">
-      <div style="font-size: 9px; color: rgba(200,220,240,0.6); font-family: 'Cairo', sans-serif; font-weight: 500; letter-spacing: 0.3px;">برمجة وتطوير</div>
-      <div style="font-size: 12px; color: #e8f4fd; font-family: 'Cairo', sans-serif; font-weight: 700; white-space: nowrap;">المهندس محمد حماد</div>
+<div id="devCredit" style="position:fixed;bottom:0;left:0;right:0;z-index:50;pointer-events:none;display:flex;justify-content:center;padding-bottom:max(10px,env(safe-area-inset-bottom));">
+  <a href="https://www.facebook.com/en.mohamed.nasr" target="_blank" rel="noopener" style="pointer-events:all;display:inline-flex;align-items:center;gap:8px;background:rgba(4,17,31,.88);border:1px solid rgba(0,229,255,.15);border-radius:30px;padding:7px 16px 7px 12px;text-decoration:none;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:0 4px 20px rgba(0,0,0,.4);transition:all .3s;animation:creditFadeIn 1.2s ease forwards;opacity:0;">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="12" fill="#1877F2"/><path d="M16.5 8H14.5C14.2 8 14 8.2 14 8.5V10H16.5L16 12.5H14V19H11.5V12.5H9.5V10H11.5V8.5C11.5 6.6 12.8 5 15 5H16.5V8Z" fill="white"/></svg>
+    <div style="line-height:1.25;">
+      <div style="font-size:9px;color:rgba(200,220,240,.6);font-family:'Cairo',sans-serif;font-weight:500;">برمجة وتطوير</div>
+      <div style="font-size:12px;color:#e8f4fd;font-family:'Cairo',sans-serif;font-weight:700;white-space:nowrap;">المهندس محمد حماد</div>
     </div>
   </a>
 </div>
 
-<style>
-@keyframes creditFadeIn {
-  0%   { opacity: 0; transform: translateY(10px); }
-  100% { opacity: 1; transform: translateY(0); }
-}
-/* Push main content so credit never overlaps last item */
-.main { padding-bottom: max(70px, calc(env(safe-area-inset-bottom) + 60px)) !important; }
-</style>
-
-<!-- PWA Install Banner for iOS -->
-<div id="iosBanner" style="display:none; position:fixed; bottom:0; left:0; right:0; background:rgba(7,30,53,0.98); border-top:1px solid rgba(0,229,255,0.2); padding:16px 20px; z-index:400; backdrop-filter:blur(20px);">
-  <div style="display:flex; align-items:center; gap:12px;">
+<!-- iOS Banner -->
+<div id="iosBanner" style="display:none;position:fixed;bottom:0;left:0;right:0;background:rgba(7,30,53,.98);border-top:1px solid rgba(0,229,255,.2);padding:16px 20px;z-index:400;backdrop-filter:blur(20px);">
+  <div style="display:flex;align-items:center;gap:12px;">
     <div style="font-size:28px;">📲</div>
     <div style="flex:1;">
-      <div style="font-size:13px; font-weight:700; color:var(--cyan);">تثبيت التطبيق على الشاشة الرئيسية</div>
-      <div style="font-size:11px; color:var(--muted); margin-top:3px;">اضغط على <b style="color:var(--text)">مشاركة ↑</b> ثم <b style="color:var(--text)">إضافة إلى الشاشة الرئيسية</b></div>
+      <div style="font-size:13px;font-weight:700;color:var(--cyan);">تثبيت التطبيق على الشاشة الرئيسية</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px;">اضغط على <b style="color:var(--text)">مشاركة ↑</b> ثم <b style="color:var(--text)">إضافة إلى الشاشة الرئيسية</b></div>
     </div>
-    <button onclick="document.getElementById('iosBanner').style.display='none'" style="background:transparent; border:none; color:var(--muted); font-size:20px; cursor:pointer; padding:4px;">✕</button>
+    <button onclick="document.getElementById('iosBanner').style.display='none'" style="background:transparent;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:4px;">✕</button>
   </div>
 </div>
 
 <script>
-// ===== STATE =====
+// ===================== STATE =====================
 let state = {
-  sectors: {}, store: {}, logs: {}, 
-  storeFloat: 'float', feedFloat: 'float',
-  currentPage: 'dashboard',
+  sectors:{}, store:{}, logs:{},
+  storeFloat:'float', feedFloat:'float',
+  storeUnit:'bag25', feedUnit:'bag25', fishUnit:'count',
+  currentPage:'dashboard',
   expandedSectors: new Set()
 };
-
 let deferredPrompt = null;
 
-// ===== INIT =====
-document.addEventListener('firebaseReady', init);
-setTimeout(() => { if (!window.firebaseReady) init(); }, 3000);
-
-function init() {
-  setDefaultDates();
-  setupListeners();
-  setupPWA();
-}
-
-function setDefaultDates() {
-  const today = new Date().toISOString().split('T')[0];
-  ['addFeedDate','feedDate','fishDate'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = today;
-  });
-}
-
-function setupListeners() {
-  if (!window.db) return;
-  
-  // Sectors
-  window.dbOnValue(window.dbRef(db, 'sectors'), snap => {
-    state.sectors = snap.val() || {};
-    renderSectors();
-    renderDashboard();
-  });
-  
-  // Store
-  window.dbOnValue(window.dbRef(db, 'store'), snap => {
-    state.store = snap.val() || {};
-    renderStore();
-    renderDashboard();
-  });
-  
-  // Logs
-  window.dbOnValue(window.dbRef(db, 'logs'), snap => {
-    state.logs = snap.val() || {};
-    renderLogs();
-    renderDashboard();
-  });
-}
-
-// ===== NAVIGATION =====
-function showPage(page) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('page-' + page).classList.add('active');
-  document.querySelectorAll('.nav-btn')[['dashboard','sectors','store','feed','logs'].indexOf(page)].classList.add('active');
-  state.currentPage = page;
-  window.scrollTo(0, 0);
-}
-
-// ===== HELPERS =====
+// ===================== CONSTANTS =====================
 const SECTORS = {
-  sector1: { name: 'القطاع الأول', icon: '1️⃣', color: '#00b4d8' },
-  sector2: { name: 'القطاع الثاني', icon: '2️⃣', color: '#06d6a0' },
-  sector3: { name: 'القطاع الثالث', icon: '3️⃣', color: '#ffd166' },
-  sarf:    { name: 'الصرف',        icon: '🔄', color: '#f4a261' },
-  maghzy:  { name: 'المغزى',       icon: '🌿', color: '#90be6d' },
+  sector1:{name:'القطاع الأول',icon:'1️⃣',color:'#00b4d8'},
+  sector2:{name:'القطاع الثاني',icon:'2️⃣',color:'#06d6a0'},
+  sector3:{name:'القطاع الثالث',icon:'3️⃣',color:'#ffd166'},
+  sarf:{name:'الصرف',icon:'🔄',color:'#f4a261'},
+  maghzy:{name:'المغزى',icon:'🌿',color:'#90be6d'},
 };
+const FISH_ICONS = {بوري:'🐟',طوبار:'🐠',شبار:'🐡',بياض:'🫧'};
+const FEED_COLORS = {'30':'var(--cyan)','18':'var(--green)','25':'var(--gold)'};
 
-const FISH_ICONS = { بوري: '🐟', طوبار: '🐠', شبار: '🐡', بياض: '🫧' };
-const FEED_COLORS = { '30': 'var(--cyan)', '18': 'var(--green)', '25': 'var(--gold)' };
+// ===================== UNIT HELPERS =====================
+function unitToKg(val, unit) {
+  if (unit==='bag25') return val * 25;
+  if (unit==='bag50') return val * 50;
+  if (unit==='ton')   return val * 1000;
+  return val;
+}
 
-function formatNum(n) {
-  if (!n && n !== 0) return '—';
-  if (n >= 1000) return (n/1000).toFixed(1) + ' طن';
-  return n.toLocaleString('ar-EG') + ' كجم';
+// Format kg → bags + tons breakdown
+function formatBags(kg) {
+  if (!kg && kg!==0) return '—';
+  const tons   = Math.floor(kg / 1000);
+  const rem1   = kg % 1000;
+  const bags50 = Math.floor(rem1 / 50);
+  const rem2   = rem1 % 50;
+  const bags25 = Math.floor(rem2 / 25);
+  const restKg = Math.round(rem2 % 25 * 100) / 100;
+  let parts = [];
+  if (tons)   parts.push(`<b style="color:var(--cyan)">${tons}</b> طن`);
+  if (bags50) parts.push(`<b style="color:var(--gold)">${bags50}</b> شيكارة 50`);
+  if (bags25) parts.push(`<b style="color:var(--green)">${bags25}</b> شيكارة 25`);
+  if (restKg) parts.push(`<b>${restKg}</b> كجم`);
+  if (!parts.length) return '<b>0</b> كجم';
+  return parts.join(' + ');
+}
+
+function formatFish(f) {
+  if (!f) return '—';
+  const u = f.unit || 'kg';
+  if (u==='count') return `${f.value} قطعة`;
+  if (u==='ton')   return `${f.value} طن`;
+  return `${f.value} كجم`;
+}
+
+function fishToKgApprox(f) {
+  if (!f) return 0;
+  const u = f.unit || 'kg';
+  if (u==='ton')   return (f.value||0)*1000;
+  if (u==='count') return (f.value||0)*0.3;
+  return f.value||0;
 }
 
 function formatDate(d) {
   if (!d) return '';
-  return new Date(d).toLocaleDateString('ar-EG', { day:'2-digit', month:'short', year:'numeric' });
+  return new Date(d).toLocaleDateString('ar-EG',{day:'2-digit',month:'short',year:'numeric'});
 }
-
 function ts() { return Date.now(); }
+function getStoreKey(t,f){ return `${t}_${f}`; }
+function getStoreKg(t,f){ const k=getStoreKey(t,f); return (state.store[k]&&state.store[k].qty)||0; }
 
-function getStoreKey(type, float) { return `${type}_${float}`; }
+// ===================== INIT =====================
+document.addEventListener('firebaseReady', init);
+setTimeout(()=>{ if(!window.firebaseReady) init(); }, 3000);
 
-function getStoreStock(type, float) {
-  const key = getStoreKey(type, float);
-  return (state.store[key] && state.store[key].qty) || 0;
-}
-
-function getTotalFishKg() {
-  let total = 0;
-  Object.values(state.sectors).forEach(sec => {
-    if (sec && sec.fish) {
-      Object.values(sec.fish).forEach(f => {
-        total += (f.unit === 'ton') ? f.weight * 1000 : f.weight;
-      });
-    }
-  });
-  return total;
-}
-
-function getTotalFeedKg() {
-  let total = 0;
-  Object.values(state.store).forEach(s => { if(s && s.qty) total += s.qty; });
-  return total;
-}
-
-function getActiveSectors() {
-  return Object.values(state.sectors).filter(s => s && s.fish && Object.keys(s.fish).length > 0).length;
-}
-
-function getTodayOps() {
+function init() {
   const today = new Date().toISOString().split('T')[0];
-  return Object.values(state.logs).filter(l => l && l.date && l.date.startsWith(today)).length;
+  ['addFeedDate','feedDate','fishDate'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value=today;
+  });
+  setupListeners();
+  setupPWA();
+  updateFeedStockInfo();
 }
 
-// ===== DASHBOARD =====
-function renderDashboard() {
-  document.getElementById('totalFishKg').textContent = formatNum(getTotalFishKg());
-  document.getElementById('totalFeedKg').textContent = formatNum(getTotalFeedKg());
-  document.getElementById('activeSectors').textContent = getActiveSectors();
-  document.getElementById('todayOps').textContent = getTodayOps();
+function setupListeners() {
+  if (!window.db) return;
+  window.dbOnValue(window.dbRef(db,'sectors'), snap=>{ state.sectors=snap.val()||{}; renderSectors(); renderDashboard(); });
+  window.dbOnValue(window.dbRef(db,'store'),   snap=>{ state.store=snap.val()||{};   renderStore();   renderDashboard(); updateFeedStockInfo(); });
+  window.dbOnValue(window.dbRef(db,'logs'),    snap=>{ state.logs=snap.val()||{};    renderLogs();    renderDashboard(); });
+}
 
-  // Sectors overview
-  const secEl = document.getElementById('dashSectors');
-  const secHtml = Object.entries(SECTORS).map(([key, sec]) => {
-    const data = state.sectors[key];
-    const fishList = data && data.fish ? Object.values(data.fish) : [];
-    const totalKg = fishList.reduce((sum, f) => sum + ((f.unit==='ton')?f.weight*1000:f.weight), 0);
-    return `
-      <div class="section-card" onclick="showPage('sectors')" style="cursor:pointer; margin-bottom:10px;">
-        <div class="sec-header">
-          <div class="section-name">
-            <div class="sec-icon" style="background:linear-gradient(135deg,${sec.color}22,${sec.color}11);">${sec.icon}</div>
-            ${sec.name}
-          </div>
+// ===================== NAV =====================
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  const idx=['dashboard','sectors','store','feed','logs'].indexOf(page);
+  if(idx>=0) document.querySelectorAll('.nav-btn')[idx].classList.add('active');
+  state.currentPage=page;
+  window.scrollTo(0,0);
+}
+
+// ===================== UNIT TOGGLES =====================
+function setStoreFloat(t){
+  state.storeFloat=t;
+  document.getElementById('storeFloatBtn').classList.toggle('active',t==='float');
+  document.getElementById('storeSinkBtn').classList.toggle('active',t==='sink');
+}
+function setFeedFloat(t){
+  state.feedFloat=t;
+  document.getElementById('feedFloatBtn').classList.toggle('active',t==='float');
+  document.getElementById('feedSinkBtn').classList.toggle('active',t==='sink');
+  updateFeedStockInfo();
+}
+
+function setStoreUnit(u){
+  state.storeUnit=u;
+  document.getElementById('storeUnit25Btn').classList.toggle('active',u==='bag25');
+  document.getElementById('storeUnit50Btn').classList.toggle('active',u==='bag50');
+  document.getElementById('storeUnitTonBtn').classList.toggle('active',u==='ton');
+  const lbl={bag25:'العدد (شيكارة 25 كجم)',bag50:'العدد (شيكارة 50 كجم)',ton:'الكمية بالطن'};
+  document.getElementById('addFeedQtyLabel').textContent=lbl[u];
+  const inp=document.getElementById('addFeedQty');
+  inp.step=u==='ton'?'0.001':'1';
+  inp.placeholder=u==='ton'?'مثال: 2.5':'أدخل العدد';
+  updateStoreCalc();
+}
+
+function setFeedUnit(u){
+  state.feedUnit=u;
+  document.getElementById('feedUnit25Btn').classList.toggle('active',u==='bag25');
+  document.getElementById('feedUnit50Btn').classList.toggle('active',u==='bag50');
+  document.getElementById('feedUnitTonBtn').classList.toggle('active',u==='ton');
+  const lbl={bag25:'العدد (شيكارة 25 كجم)',bag50:'العدد (شيكارة 50 كجم)',ton:'الكمية بالطن'};
+  document.getElementById('feedQtyLabel').textContent=lbl[u];
+  const inp=document.getElementById('feedQty');
+  inp.step=u==='ton'?'0.001':'1';
+  inp.placeholder=u==='ton'?'مثال: 1.5':'أدخل العدد';
+  updateFeedCalc();
+}
+
+function setFishUnit(u){
+  state.fishUnit=u;
+  document.getElementById('fishUnitCountBtn').classList.toggle('active',u==='count');
+  document.getElementById('fishUnitKgBtn').classList.toggle('active',u==='kg');
+  document.getElementById('fishUnitTonBtn').classList.toggle('active',u==='ton');
+  const lbl={count:'العدد (قطعة)',kg:'الوزن (كجم)',ton:'الوزن (طن)'};
+  document.getElementById('fishValueLabel').textContent=lbl[u];
+  document.getElementById('fishValue').step=u==='count'?'1':'0.001';
+}
+
+function updateStoreCalc(){
+  const val=parseFloat(document.getElementById('addFeedQty').value)||0;
+  const el=document.getElementById('storeCalcInfo');
+  if(!val){el.style.display='none';return;}
+  const kg=unitToKg(val,state.storeUnit);
+  el.style.display='block';
+  el.innerHTML=`الإجمالي: <b style="color:var(--cyan)">${kg.toLocaleString('ar-EG')} كجم</b> ← ${formatBags(kg)}`;
+}
+
+function updateFeedCalc(){
+  const val=parseFloat(document.getElementById('feedQty').value)||0;
+  const el=document.getElementById('feedCalcInfo');
+  if(!val){el.style.display='none';return;}
+  const kg=unitToKg(val,state.feedUnit);
+  el.style.display='block';
+  el.innerHTML=`الإجمالي: <b style="color:var(--cyan)">${kg.toLocaleString('ar-EG')} كجم</b> ← ${formatBags(kg)}`;
+}
+
+function updateFeedStockInfo(){
+  const type=document.getElementById('feedType')?.value;
+  const float=state.feedFloat;
+  const el=document.getElementById('feedStockInfo');
+  if(!el||!type) return;
+  const avail=getStoreKg(type,float);
+  el.innerHTML=`📦 المتاح (${type}% ${float==='float'?'🌊 عايم':'⬇️ غاطس'}): <b style="color:var(--gold)">${avail.toLocaleString('ar-EG')} كجم</b><br>${formatBags(avail)}`;
+}
+
+// ===================== DASHBOARD =====================
+function renderDashboard(){
+  const totalFish=Object.values(state.sectors).reduce((s,sec)=>{
+    if(sec&&sec.fish) Object.values(sec.fish).forEach(f=>s+=fishToKgApprox(f)); return s;
+  },0);
+  const totalFeed=Object.values(state.store).reduce((s,x)=>s+((x&&x.qty)||0),0);
+  document.getElementById('totalFishKg').textContent=totalFish>=1000?(totalFish/1000).toFixed(1)+' طن':totalFish.toFixed(0)+' كجم';
+  document.getElementById('totalFeedKg').textContent=totalFeed>=1000?(totalFeed/1000).toFixed(1)+' طن':totalFeed.toFixed(0)+' كجم';
+  document.getElementById('activeSectors').textContent=Object.values(state.sectors).filter(s=>s&&s.fish&&Object.keys(s.fish).length>0).length;
+  const today=new Date().toISOString().split('T')[0];
+  document.getElementById('todayOps').textContent=Object.values(state.logs).filter(l=>l&&l.date&&l.date.startsWith(today)).length;
+
+  document.getElementById('dashSectors').innerHTML=Object.entries(SECTORS).map(([key,sec])=>{
+    const data=state.sectors[key];
+    const fl=data&&data.fish?Object.values(data.fish):[];
+    const totalKg=fl.reduce((s,f)=>s+fishToKgApprox(f),0);
+    return `<div class="section-card" onclick="showPage('sectors')" style="margin-bottom:10px;cursor:pointer;">
+      <div class="sec-header">
+        <div class="section-name"><div class="sec-icon" style="background:linear-gradient(135deg,${sec.color}22,${sec.color}11);">${sec.icon}</div>${sec.name}</div>
+        <div class="section-badge">${fl.length} نوع</div>
+      </div>
+      ${totalKg>0?`<div style="font-size:13px;color:var(--muted);margin-top:8px;">تقريبي: <b style="color:var(--gold)">${totalKg>=1000?(totalKg/1000).toFixed(1)+' طن':totalKg.toFixed(0)+' كجم'}</b></div>`:`<div style="font-size:12px;color:var(--muted);margin-top:8px;">لا يوجد أسماك</div>`}
+      <div class="water"><svg viewBox="0 0 200 20" preserveAspectRatio="none"><path d="M0,10 C50,0 100,20 150,10 C175,5 190,15 200,10 L200,20 L0,20Z" fill="${sec.color}"/></svg></div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('dashFeed').innerHTML=['30','18','25'].map(t=>{
+    const fKg=getStoreKg(t,'float'), sKg=getStoreKg(t,'sink'), total=fKg+sKg;
+    return `<div class="feed-card p${t}" style="margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div><div class="feed-pct">${t}%</div><div class="feed-sub">بروتين</div></div>
+        <div style="text-align:left;"><div style="font-size:15px;font-weight:900;color:${FEED_COLORS[t]}">${(total/1000).toFixed(2)} طن</div><div style="font-size:10px;color:var(--muted)">${total.toLocaleString('ar-EG')} كجم</div></div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px;">${formatBags(total)}</div>
+    </div>`;
+  }).join('');
+
+  const allLogs=Object.entries(state.logs).sort((a,b)=>(b[1].ts||0)-(a[1].ts||0)).slice(0,5);
+  document.getElementById('dashLogs').innerHTML=allLogs.length===0
+    ?'<div class="empty"><div class="empty-icon">📋</div><p>لا توجد عمليات بعد</p></div>'
+    :allLogs.map(([,l])=>renderLogItem(l,false)).join('');
+}
+
+// ===================== SECTORS =====================
+function renderSectors(){
+  const container=document.getElementById('sectorsContainer');
+  let html='';
+  Object.entries(SECTORS).forEach(([key,sec])=>{
+    const data=state.sectors[key]||{};
+    const fishList=data.fish?Object.entries(data.fish):[];
+    const isExp=state.expandedSectors.has(key);
+    html+=`<div class="section-card" id="sec-${key}">
+      <div class="sec-header" onclick="toggleSector('${key}')">
+        <div class="section-name"><div class="sec-icon" style="background:linear-gradient(135deg,${sec.color}22,${sec.color}11);">${sec.icon}</div>${sec.name}</div>
+        <div style="display:flex;align-items:center;gap:8px;">
           <div class="section-badge">${fishList.length} نوع</div>
+          <span style="color:var(--muted);font-size:18px;">${isExp?'▲':'▼'}</span>
         </div>
-        ${totalKg > 0 ? `<div style="font-size:13px; color:var(--muted); margin-top:8px;">إجمالي: <b style="color:var(--gold);">${formatNum(totalKg)}</b></div>` : `<div style="font-size:12px; color:var(--muted); margin-top:8px;">لا يوجد أسماك</div>`}
-        <div class="water"><svg viewBox="0 0 200 20" preserveAspectRatio="none"><path d="M0,10 C50,0 100,20 150,10 C175,5 190,15 200,10 L200,20 L0,20Z" fill="${sec.color}"/></svg></div>
-      </div>`;
-  }).join('');
-  secEl.innerHTML = secHtml;
-
-  // Feed overview
-  const feedEl = document.getElementById('dashFeed');
-  const feedTypes = ['30','18','25'];
-  const feedHtml = feedTypes.map(t => {
-    const fKg = getStoreStock(t, 'float');
-    const sKg = getStoreStock(t, 'sink');
-    const total = fKg + sKg;
-    return `
-      <div class="feed-card p${t}" style="margin-bottom:10px;">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <div>
-            <div class="feed-pct">${t}%</div>
-            <div class="feed-sub">بروتين</div>
-          </div>
-          <div style="text-align:left;">
-            <div style="font-size:18px; font-weight:900; color:${FEED_COLORS[t]}">${formatNum(total)}</div>
-            <div style="font-size:11px; color:var(--muted);">إجمالي المخزن</div>
-          </div>
-        </div>
-        <div class="feed-stocks">
-          <div class="feed-type-badge">
-            <div class="type-name">🌊 عايم</div>
-            <div class="type-val" style="color:${FEED_COLORS[t]}">${formatNum(fKg)}</div>
-          </div>
-          <div class="feed-type-badge">
-            <div class="type-name">⬇️ غاطس</div>
-            <div class="type-val" style="color:${FEED_COLORS[t]}">${formatNum(sKg)}</div>
-          </div>
-        </div>
-      </div>`;
-  }).join('');
-  feedEl.innerHTML = feedHtml;
-
-  // Recent logs
-  const logsEl = document.getElementById('dashLogs');
-  const allLogs = Object.entries(state.logs)
-    .sort((a,b) => (b[1].ts||0) - (a[1].ts||0))
-    .slice(0, 5);
-  if (allLogs.length === 0) {
-    logsEl.innerHTML = '<div class="empty"><div class="empty-icon">📋</div><p>لا توجد عمليات بعد</p></div>';
-  } else {
-    logsEl.innerHTML = allLogs.map(([,log]) => renderLogItem(log)).join('');
-  }
-}
-
-// ===== SECTORS =====
-function renderSectors() {
-  const container = document.getElementById('sectorsContainer');
-  let html = '';
-  Object.entries(SECTORS).forEach(([key, sec]) => {
-    const data = state.sectors[key] || {};
-    const fishList = data.fish ? Object.entries(data.fish) : [];
-    const totalKg = fishList.reduce((sum, [,f]) => sum + ((f.unit==='ton')?f.weight*1000:f.weight), 0);
-    const isExpanded = state.expandedSectors.has(key);
-    
-    html += `
-      <div class="section-card" id="sec-${key}">
-        <div class="sec-header" onclick="toggleSector('${key}')">
-          <div class="section-name">
-            <div class="sec-icon" style="background:linear-gradient(135deg,${sec.color}22,${sec.color}11);">${sec.icon}</div>
-            ${sec.name}
-          </div>
-          <div style="display:flex; align-items:center; gap:8px;">
-            <div class="section-badge">${fishList.length} نوع</div>
-            <span style="color:var(--muted); font-size:18px;">${isExpanded ? '▲' : '▼'}</span>
-          </div>
-        </div>
-        ${totalKg > 0 ? `<div style="font-size:13px; color:var(--muted); margin-top:8px;">إجمالي: <b style="color:var(--gold);">${formatNum(totalKg)}</b></div>` : ''}
-        
-        <div class="section-expand ${isExpanded ? 'open' : ''}" id="expand-${key}">
-          <div class="fish-list">
-            ${fishList.length === 0 
-              ? '<div class="empty" style="padding:20px;"><div class="empty-icon">🐠</div><p>لا يوجد أسماك في هذا القطاع</p></div>' 
-              : fishList.map(([fid, f]) => `
-                <div class="fish-item">
-                  <div class="fish-info">
-                    <span style="font-size:20px;">${FISH_ICONS[f.type] || '🐟'}</span>
-                    <div>
-                      <div class="fish-name">${f.type}</div>
-                      <div class="fish-date">${formatDate(f.date)}</div>
-                    </div>
+      </div>
+      <div class="section-expand ${isExp?'open':''}" id="expand-${key}">
+        <div class="fish-list">
+          ${fishList.length===0
+            ?'<div class="empty" style="padding:20px;"><div class="empty-icon">🐠</div><p>لا يوجد أسماك في هذا القطاع</p></div>'
+            :fishList.map(([fid,f])=>`
+              <div class="fish-item">
+                <div class="fish-info">
+                  <span style="font-size:20px;">${FISH_ICONS[f.type]||'🐟'}</span>
+                  <div>
+                    <div class="fish-name">${f.type}</div>
+                    <div class="fish-date">${formatDate(f.date)}</div>
                   </div>
-                  <div style="display:flex; align-items:center; gap:8px;">
-                    <div class="fish-weight">${f.weight}<span>${f.unit === 'ton' ? ' طن' : ' كجم'}</span></div>
-                    <button class="del-btn" onclick="deleteFish('${key}','${fid}')">🗑️</button>
-                  </div>
-                </div>`).join('')}
-          </div>
-          <button class="btn btn-green" style="margin-top:12px;" onclick="quickAddFish('${key}')">➕ إضافة سمك</button>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;">
+                  <div class="fish-weight">${formatFish(f)}</div>
+                  <button class="btn-edit" onclick="openEditFish('${key}','${fid}')">✏️</button>
+                  <button class="del-btn" onclick="deleteFish('${key}','${fid}')">🗑️</button>
+                </div>
+              </div>`).join('')}
         </div>
-        <div class="water"><svg viewBox="0 0 200 20" preserveAspectRatio="none"><path d="M0,10 C50,0 100,20 150,10 C175,5 190,15 200,10 L200,20 L0,20Z" fill="${sec.color}"/></svg></div>
-      </div>`;
+        <button class="btn btn-green" style="margin-top:12px;" onclick="quickAddFish('${key}')">➕ إضافة سمك</button>
+      </div>
+      <div class="water"><svg viewBox="0 0 200 20" preserveAspectRatio="none"><path d="M0,10 C50,0 100,20 150,10 C175,5 190,15 200,10 L200,20 L0,20Z" fill="${sec.color}"/></svg></div>
+    </div>`;
   });
-  container.innerHTML = html;
+  container.innerHTML=html;
 }
 
-function toggleSector(key) {
-  if (state.expandedSectors.has(key)) {
-    state.expandedSectors.delete(key);
-  } else {
-    state.expandedSectors.add(key);
-  }
-  renderSectors();
-}
+function toggleSector(key){ state.expandedSectors.has(key)?state.expandedSectors.delete(key):state.expandedSectors.add(key); renderSectors(); }
+function quickAddFish(k){ showPage('feed'); document.getElementById('fishSector').value=k; setTimeout(()=>document.querySelector('#page-feed .card:last-child').scrollIntoView({behavior:'smooth'}),300); }
 
-function quickAddFish(sectorKey) {
-  showPage('feed');
-  document.getElementById('fishSector').value = sectorKey;
-  document.querySelector('#page-feed .card:last-child').scrollIntoView({ behavior:'smooth' });
-}
-
-// ===== STORE =====
-function renderStore() {
-  const container = document.getElementById('feedStockContainer');
-  const feedTypes = ['30','18','25'];
-  let html = '';
-  feedTypes.forEach(t => {
-    const fKg = getStoreStock(t, 'float');
-    const sKg = getStoreStock(t, 'sink');
-    const total = fKg + sKg;
-    const maxStock = 50000;
-    const pct = Math.min(100, (total/maxStock)*100);
-    html += `
-      <div class="feed-card p${t}">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <div>
-            <div class="feed-pct">${t}%</div>
-            <div class="feed-sub">بروتين — إجمالي: ${formatNum(total)}</div>
-          </div>
-          <div style="font-size:11px; color:var(--muted); text-align:left;">${pct.toFixed(1)}%<br>ممتلئ</div>
+// ===================== STORE =====================
+function renderStore(){
+  const container=document.getElementById('feedStockContainer');
+  container.innerHTML=['30','18','25'].map(t=>{
+    const fKg=getStoreKg(t,'float'), sKg=getStoreKg(t,'sink'), total=fKg+sKg;
+    const pct=Math.min(100,(total/100000)*100);
+    const kF=getStoreKey(t,'float'), kS=getStoreKey(t,'sink');
+    return `<div class="feed-card p${t}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div><div class="feed-pct">${t}%</div><div class="feed-sub">بروتين</div></div>
+        <div style="text-align:left;">
+          <div style="font-size:15px;font-weight:900;color:${FEED_COLORS[t]}">${(total/1000).toFixed(2)} طن</div>
+          <div style="font-size:10px;color:var(--muted)">${total.toLocaleString('ar-EG')} كجم</div>
         </div>
-        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%; background:${FEED_COLORS[t]};"></div></div>
-        <div class="feed-stocks" style="margin-top:12px;">
-          <div class="feed-type-badge">
-            <div class="type-name">🌊 عايم</div>
-            <div class="type-val" style="color:${FEED_COLORS[t]}">${formatNum(fKg)}</div>
-          </div>
-          <div class="feed-type-badge">
-            <div class="type-name">⬇️ غاطس</div>
-            <div class="type-val" style="color:${FEED_COLORS[t]}">${formatNum(sKg)}</div>
-          </div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px;">${formatBags(total)}</div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${FEED_COLORS[t]};"></div></div>
+      <div class="feed-stocks" style="margin-top:10px;">
+        <div class="feed-type-badge">
+          <div class="type-name">🌊 عايم</div>
+          <div class="type-val" style="color:${FEED_COLORS[t]}">${(fKg/1000).toFixed(2)} طن</div>
+          <div class="type-bags">${formatBags(fKg)}</div>
+          <button class="btn-edit" style="margin-top:6px;font-size:11px;padding:4px 8px;" onclick="openEditStore('${kF}',${fKg})">✏️ تعديل</button>
         </div>
-      </div>`;
-  });
-  container.innerHTML = html;
-}
-
-// ===== LOGS =====
-function renderLogItem(log) {
-  if (!log) return '';
-  const icons = { feed_out:'🍽️', fish_in:'🐟', store_in:'📦', fish_out:'📤' };
-  const colors = { feed_out:'feed-out', fish_in:'fish-in', store_in:'fish-in', fish_out:'fish-out' };
-  const titles = {
-    feed_out: `إخراج علف ${log.feedType}% ${log.float==='float'?'🌊 عايم':'⬇️ غاطس'} للـ${SECTORS[log.sector]?.name||log.sector}`,
-    fish_in: `إضافة ${log.fishType} لـ${SECTORS[log.sector]?.name||log.sector}`,
-    store_in: `استلام علف ${log.feedType}% ${log.float==='float'?'🌊 عايم':'⬇️ غاطس'} للمخزن`,
-    fish_out: `إخراج أسماك من ${SECTORS[log.sector]?.name||log.sector}`,
-  };
-  return `
-    <div class="log-item">
-      <div class="log-icon ${colors[log.type]||''}">${icons[log.type]||'📌'}</div>
-      <div class="log-body">
-        <div class="log-title">${titles[log.type]||log.type}</div>
-        <div class="log-detail">
-          الكمية: <b style="color:var(--gold)">${formatNum(log.qty)}</b>
-          ${log.remaining !== undefined ? ` | المتبقي: <b style="color:var(--green)">${formatNum(log.remaining)}</b>` : ''}
-          ${log.notes ? ` | ${log.notes}` : ''}
+        <div class="feed-type-badge">
+          <div class="type-name">⬇️ غاطس</div>
+          <div class="type-val" style="color:${FEED_COLORS[t]}">${(sKg/1000).toFixed(2)} طن</div>
+          <div class="type-bags">${formatBags(sKg)}</div>
+          <button class="btn-edit" style="margin-top:6px;font-size:11px;padding:4px 8px;" onclick="openEditStore('${kS}',${sKg})">✏️ تعديل</button>
         </div>
-        <div class="log-time">📅 ${formatDate(log.date)}</div>
       </div>
     </div>`;
+  }).join('');
 }
 
-function renderLogs() {
-  const container = document.getElementById('logsContainer');
-  filterLogs();
-}
-
-function filterLogs() {
-  const container = document.getElementById('logsContainer');
-  if (!container) return;
-  const typeFilter = document.getElementById('logFilter')?.value || 'all';
-  const sectorFilter = document.getElementById('logSectorFilter')?.value || 'all';
-  
-  let entries = Object.entries(state.logs)
-    .filter(([,l]) => l)
-    .sort((a,b) => (b[1].ts||0) - (a[1].ts||0));
-  
-  if (typeFilter !== 'all') entries = entries.filter(([,l]) => l.type === typeFilter);
-  if (sectorFilter !== 'all') entries = entries.filter(([,l]) => l.sector === sectorFilter || (sectorFilter === 'store' && l.type === 'store_in'));
-  
-  if (entries.length === 0) {
-    container.innerHTML = '<div class="empty"><div class="empty-icon">📋</div><p>لا توجد سجلات مطابقة</p></div>';
-  } else {
-    container.innerHTML = entries.map(([,log]) => renderLogItem(log)).join('');
+// ===================== LOG RENDER =====================
+function renderLogItem(log, withActions){
+  if(!log) return '';
+  const icons={feed_out:'🍽️',fish_in:'🐟',store_in:'📦'};
+  const cls  ={feed_out:'feed-out',fish_in:'fish-in',store_in:'store-in'};
+  const sname=log.sector?(SECTORS[log.sector]?.name||log.sector):'المخزن';
+  let title='',detail='';
+  if(log.type==='feed_out'){
+    title=`إخراج علف ${log.feedType}% ${log.float==='float'?'🌊 عايم':'⬇️ غاطس'} ← ${sname}`;
+    detail=`الكمية: <b style="color:var(--gold)">${formatBags(log.qty)} (${(log.qty||0).toLocaleString('ar-EG')} كجم)</b>`
+          +(log.remaining!=null?` | متبقي: <b style="color:var(--green)">${formatBags(log.remaining)}</b>`:'')
+          +(log.notes?` | ${log.notes}`:'');
+  }else if(log.type==='fish_in'){
+    title=`إضافة ${log.fishType} ← ${sname}`;
+    detail=`الكمية: <b style="color:var(--gold)">${log.fishDisplay||'—'}</b>`;
+  }else if(log.type==='store_in'){
+    title=`استلام علف ${log.feedType}% ${log.float==='float'?'🌊 عايم':'⬇️ غاطس'} → المخزن`;
+    detail=`الكمية: <b style="color:var(--gold)">${formatBags(log.qty)} (${(log.qty||0).toLocaleString('ar-EG')} كجم)</b>`;
   }
+  const actBtns=withActions&&log.id?`
+    <div class="log-actions">
+      ${log.type==='feed_out'?`<button class="btn-edit btn-sm" onclick="openEditFeedLog('${log.id}')">✏️ تعديل</button>`:''}
+      <button class="del-btn btn-sm" onclick="deleteLog('${log.id}')">🗑️ حذف</button>
+    </div>`:'';
+  return `<div class="log-item">
+    <div class="log-icon ${cls[log.type]||''}">${icons[log.type]||'📌'}</div>
+    <div class="log-body">
+      <div class="log-title">${title}</div>
+      <div class="log-detail">${detail}</div>
+      <div class="log-time">📅 ${formatDate(log.date)}</div>
+      ${actBtns}
+    </div>
+  </div>`;
 }
 
-// ===== ACTIONS =====
-function setStoreFloat(type) {
-  state.storeFloat = type;
-  document.getElementById('storeFloatBtn').classList.toggle('active', type === 'float');
-  document.getElementById('storeSinkBtn').classList.toggle('active', type === 'sink');
+function renderLogs(){ filterLogs(); }
+function filterLogs(){
+  const container=document.getElementById('logsContainer');
+  if(!container) return;
+  const tf=document.getElementById('logFilter')?.value||'all';
+  const sf=document.getElementById('logSectorFilter')?.value||'all';
+  let entries=Object.entries(state.logs).filter(([,l])=>l).sort((a,b)=>(b[1].ts||0)-(a[1].ts||0));
+  if(tf!=='all') entries=entries.filter(([,l])=>l.type===tf);
+  if(sf!=='all') entries=entries.filter(([,l])=>sf==='store'?l.type==='store_in':l.sector===sf);
+  container.innerHTML=entries.length===0
+    ?'<div class="empty"><div class="empty-icon">📋</div><p>لا توجد سجلات مطابقة</p></div>'
+    :entries.map(([id,l])=>renderLogItem({...l,id},true)).join('');
 }
 
-function setFeedFloat(type) {
-  state.feedFloat = type;
-  document.getElementById('feedFloatBtn').classList.toggle('active', type === 'float');
-  document.getElementById('feedSinkBtn').classList.toggle('active', type === 'sink');
+// ===================== ACTIONS =====================
+async function addFeedToStore(){
+  const type=document.getElementById('addFeedType').value;
+  const val=parseFloat(document.getElementById('addFeedQty').value);
+  const float=state.storeFloat;
+  const date=document.getElementById('addFeedDate').value;
+  if(!val||val<=0) return showToast('❌ أدخل كمية صحيحة','error');
+  if(!date) return showToast('❌ اختر التاريخ','error');
+  const kg=unitToKg(val,state.storeUnit);
+  const key=getStoreKey(type,float);
+  const current=getStoreKg(type,float);
+  await window.dbSet(window.dbRef(db,`store/${key}`),{type,float,qty:current+kg});
+  const lr=window.dbPush(window.dbRef(db,'logs'));
+  await window.dbSet(lr,{type:'store_in',feedType:type,float,qty:kg,date,ts:ts()});
+  document.getElementById('addFeedQty').value='';
+  document.getElementById('storeCalcInfo').style.display='none';
+  showToast(`✅ تم إضافة ${formatBags(kg)} علف ${type}%`,'success');
 }
 
-async function addFeedToStore() {
-  const type = document.getElementById('addFeedType').value;
-  const qty = parseFloat(document.getElementById('addFeedQty').value);
-  const float = state.storeFloat;
-  const date = document.getElementById('addFeedDate').value;
-  
-  if (!qty || qty <= 0) return showToast('❌ أدخل كمية صحيحة', 'error');
-  if (!date) return showToast('❌ اختر التاريخ', 'error');
-  
-  const key = getStoreKey(type, float);
-  const current = getStoreStock(type, float);
-  const newQty = current + qty;
-  
-  await window.dbSet(window.dbRef(db, `store/${key}`), { type, float, qty: newQty });
-  
-  const logRef = window.dbPush(window.dbRef(db, 'logs'));
-  await window.dbSet(logRef, { type:'store_in', feedType:type, float, qty, sector:'store', date, ts:ts() });
-  
-  document.getElementById('addFeedQty').value = '';
-  showToast(`✅ تم إضافة ${formatNum(qty)} علف ${type}% ${float==='float'?'عايم':'غاطس'}`, 'success');
+async function submitFeed(){
+  const sector=document.getElementById('feedSector').value;
+  const feedType=document.getElementById('feedType').value;
+  const float=state.feedFloat;
+  const val=parseFloat(document.getElementById('feedQty').value);
+  const date=document.getElementById('feedDate').value;
+  const notes=document.getElementById('feedNotes').value;
+  if(!val||val<=0) return showToast('❌ أدخل كمية صحيحة','error');
+  if(!date) return showToast('❌ اختر التاريخ','error');
+  const kg=unitToKg(val,state.feedUnit);
+  const avail=getStoreKg(feedType,float);
+  if(kg>avail) return showToast(`❌ المطلوب ${formatBags(kg)} أكبر من المتاح ${formatBags(avail)}`,'error');
+  const newQty=avail-kg;
+  const key=getStoreKey(feedType,float);
+  await window.dbUpdate(window.dbRef(db,`store/${key}`),{qty:newQty});
+  const lr=window.dbPush(window.dbRef(db,'logs'));
+  await window.dbSet(lr,{type:'feed_out',feedType,float,qty:kg,sector,date,notes,remaining:newQty,ts:ts()});
+  document.getElementById('feedQty').value='';
+  document.getElementById('feedNotes').value='';
+  document.getElementById('feedCalcInfo').style.display='none';
+  showToast(`✅ تم الصرف ${formatBags(kg)} | متبقي: ${formatBags(newQty)}`,'success');
 }
 
-async function submitFeed() {
-  const sector = document.getElementById('feedSector').value;
-  const feedType = document.getElementById('feedType').value;
-  const float = state.feedFloat;
-  const qty = parseFloat(document.getElementById('feedQty').value);
-  const date = document.getElementById('feedDate').value;
-  const notes = document.getElementById('feedNotes').value;
-  
-  if (!qty || qty <= 0) return showToast('❌ أدخل كمية صحيحة', 'error');
-  if (!date) return showToast('❌ اختر التاريخ', 'error');
-  
-  const current = getStoreStock(feedType, float);
-  if (qty > current) {
-    return showToast(`❌ الكمية المطلوبة (${formatNum(qty)}) أكبر من المتاح (${formatNum(current)})`, 'error');
-  }
-  
-  const newQty = current - qty;
-  const key = getStoreKey(feedType, float);
-  await window.dbUpdate(window.dbRef(db, `store/${key}`), { qty: newQty });
-  
-  const logRef = window.dbPush(window.dbRef(db, 'logs'));
-  await window.dbSet(logRef, {
-    type:'feed_out', feedType, float, qty, sector, date, notes, remaining: newQty, ts:ts()
-  });
-  
-  document.getElementById('feedQty').value = '';
-  document.getElementById('feedNotes').value = '';
-  showToast(`✅ تم صرف ${formatNum(qty)} | متبقي: ${formatNum(newQty)}`, 'success');
+async function addFishToSector(){
+  const sector=document.getElementById('fishSector').value;
+  const type=document.getElementById('fishType').value;
+  const value=parseFloat(document.getElementById('fishValue').value);
+  const unit=state.fishUnit;
+  const date=document.getElementById('fishDate').value;
+  if(!value||value<=0) return showToast('❌ أدخل كمية صحيحة','error');
+  if(!date) return showToast('❌ اختر التاريخ','error');
+  const fishRef=window.dbPush(window.dbRef(db,`sectors/${sector}/fish`));
+  await window.dbSet(fishRef,{type,value,unit,date,ts:ts()});
+  const display=formatFish({value,unit});
+  const lr=window.dbPush(window.dbRef(db,'logs'));
+  await window.dbSet(lr,{type:'fish_in',fishType:type,fishDisplay:display,qty:fishToKgApprox({value,unit}),sector,date,ts:ts()});
+  document.getElementById('fishValue').value='';
+  showToast(`✅ تم إضافة ${display} ${type}`,'success');
 }
 
-async function addFishToSector() {
-  const sector = document.getElementById('fishSector').value;
-  const fishType = document.getElementById('fishType').value;
-  const weight = parseFloat(document.getElementById('fishWeight').value);
-  const unit = document.getElementById('fishUnit').value;
-  const date = document.getElementById('fishDate').value;
-  
-  if (!weight || weight <= 0) return showToast('❌ أدخل وزن صحيح', 'error');
-  if (!date) return showToast('❌ اختر التاريخ', 'error');
-  
-  const fishRef = window.dbPush(window.dbRef(db, `sectors/${sector}/fish`));
-  await window.dbSet(fishRef, { type: fishType, weight, unit, date, ts:ts() });
-  
-  const logRef = window.dbPush(window.dbRef(db, 'logs'));
-  await window.dbSet(logRef, {
-    type:'fish_in', fishType, qty: unit==='ton'?weight*1000:weight, sector, date, ts:ts()
-  });
-  
-  document.getElementById('fishWeight').value = '';
-  showToast(`✅ تم إضافة ${weight} ${unit==='ton'?'طن':'كجم'} ${fishType}`, 'success');
+// ===================== EDIT / DELETE =====================
+function openEditFish(sectorKey,fishId){
+  const f=state.sectors[sectorKey]?.fish?.[fishId]; if(!f) return;
+  document.getElementById('editFishId').value=fishId;
+  document.getElementById('editFishSectorKey').value=sectorKey;
+  document.getElementById('editFishType').value=f.type;
+  document.getElementById('editFishValue').value=f.value;
+  document.getElementById('editFishUnit').value=f.unit||'kg';
+  document.getElementById('editFishDate').value=f.date||'';
+  openModal('editFishModal');
+}
+async function saveEditFish(){
+  const sectorKey=document.getElementById('editFishSectorKey').value;
+  const fishId=document.getElementById('editFishId').value;
+  const type=document.getElementById('editFishType').value;
+  const value=parseFloat(document.getElementById('editFishValue').value);
+  const unit=document.getElementById('editFishUnit').value;
+  const date=document.getElementById('editFishDate').value;
+  if(!value||value<=0) return showToast('❌ قيمة غير صحيحة','error');
+  await window.dbUpdate(window.dbRef(db,`sectors/${sectorKey}/fish/${fishId}`),{type,value,unit,date});
+  closeModal('editFishModal');
+  showToast('✅ تم التعديل','success');
+}
+async function deleteFish(sectorKey,fishId){
+  if(!confirm('هل تريد حذف هذا السجل؟')) return;
+  await window.dbRemove(window.dbRef(db,`sectors/${sectorKey}/fish/${fishId}`));
+  showToast('🗑️ تم الحذف','success');
 }
 
-async function deleteFish(sectorKey, fishId) {
-  if (!confirm('هل تريد حذف هذا السجل؟')) return;
-  await window.dbRemove(window.dbRef(db, `sectors/${sectorKey}/fish/${fishId}`));
-  showToast('🗑️ تم الحذف', 'success');
+function openEditFeedLog(logId){
+  const l=state.logs[logId]; if(!l) return;
+  document.getElementById('editLogId').value=logId;
+  document.getElementById('editFeedType').value=l.feedType;
+  document.getElementById('editFeedSector').value=l.sector||'sector1';
+  document.getElementById('editFeedQty').value=l.qty;
+  document.getElementById('editFeedDate').value=l.date||'';
+  document.getElementById('editFeedNotes').value=l.notes||'';
+  openModal('editFeedModal');
+}
+async function saveEditFeedLog(){
+  const logId=document.getElementById('editLogId').value;
+  const feedType=document.getElementById('editFeedType').value;
+  const sector=document.getElementById('editFeedSector').value;
+  const qty=parseFloat(document.getElementById('editFeedQty').value);
+  const date=document.getElementById('editFeedDate').value;
+  const notes=document.getElementById('editFeedNotes').value;
+  if(!qty||qty<=0) return showToast('❌ كمية غير صحيحة','error');
+  await window.dbUpdate(window.dbRef(db,`logs/${logId}`),{feedType,sector,qty,date,notes});
+  closeModal('editFeedModal');
+  showToast('✅ تم تعديل السجل','success');
+}
+async function deleteLog(logId){
+  if(!confirm('هل تريد حذف هذا السجل؟')) return;
+  await window.dbRemove(window.dbRef(db,`logs/${logId}`));
+  showToast('🗑️ تم الحذف','success');
 }
 
-// ===== TOAST =====
+function openEditStore(key,currentQty){
+  document.getElementById('editStoreKey').value=key;
+  document.getElementById('editStoreQty').value=currentQty;
+  openModal('editStoreModal');
+}
+async function saveEditStore(){
+  const key=document.getElementById('editStoreKey').value;
+  const qty=parseFloat(document.getElementById('editStoreQty').value);
+  if(isNaN(qty)||qty<0) return showToast('❌ قيمة غير صحيحة','error');
+  await window.dbUpdate(window.dbRef(db,`store/${key}`),{qty});
+  closeModal('editStoreModal');
+  showToast('✅ تم تحديث المخزون','success');
+}
+
+// ===================== MODALS =====================
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+function closeModal(id,e){
+  if(e&&e.target!==document.getElementById(id)) return;
+  document.getElementById(id).classList.remove('open');
+}
+
+// ===================== TOAST =====================
 let toastTimer;
-function showToast(msg, type='') {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = `toast ${type} show`;
+function showToast(msg,type=''){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className=`toast ${type} show`;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { t.classList.remove('show'); }, 3500);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),3500);
 }
 
-// ===== PWA =====
-function setupPWA() {
-  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-  
-  if (isIOS && !isStandalone) {
-    setTimeout(() => {
-      if (!localStorage.getItem('iosBannerDismissed')) {
-        document.getElementById('iosBanner').style.display = 'block';
-      }
-    }, 2000);
+// ===================== PWA =====================
+function setupPWA(){
+  const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isStandalone=window.matchMedia('(display-mode:standalone)').matches||window.navigator.standalone;
+  if(isIOS&&!isStandalone){
+    setTimeout(()=>{ if(!localStorage.getItem('iosBannerDismissed')) document.getElementById('iosBanner').style.display='block'; },2000);
     document.getElementById('installBtn').classList.remove('hidden');
-    document.getElementById('installBtn').onclick = () => {
-      document.getElementById('iosBanner').style.display = 'block';
-    };
+    document.getElementById('installBtn').onclick=()=>document.getElementById('iosBanner').style.display='block';
   }
-  
-  window.addEventListener('beforeinstallprompt', e => {
-    e.preventDefault();
-    deferredPrompt = e;
-    document.getElementById('installBtn').classList.remove('hidden');
-    document.getElementById('installBtn').onclick = installApp;
-  });
-  
-  window.addEventListener('appinstalled', () => {
-    document.getElementById('installBtn').classList.add('hidden');
-    showToast('✅ تم تثبيت التطبيق بنجاح!', 'success');
-  });
+  window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); deferredPrompt=e; document.getElementById('installBtn').classList.remove('hidden'); document.getElementById('installBtn').onclick=installApp; });
+  window.addEventListener('appinstalled',()=>{ document.getElementById('installBtn').classList.add('hidden'); showToast('🎉 تم التثبيت!','success'); });
 }
-
-function installApp() {
-  if (deferredPrompt) {
-    deferredPrompt.prompt();
-    deferredPrompt.userChoice.then(c => {
-      if (c.outcome === 'accepted') showToast('🎉 جاري تثبيت التطبيق...', 'success');
-      deferredPrompt = null;
-    });
-  }
+function installApp(){
+  if(!deferredPrompt) return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(c=>{ if(c.outcome==='accepted') showToast('🎉 جاري التثبيت...','success'); deferredPrompt=null; });
 }
-
-// ===== SW REGISTER =====
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
-  });
-}
+if('serviceWorker'in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
 </script>
 </body>
 </html>
