@@ -41,6 +41,7 @@
   --gold:#ffd166;--coral:#ff6b6b;--green:#06d6a0;--text:#e8f4fd;
   --muted:#7da9c4;--glass:rgba(0,180,216,.08);
   --gb:rgba(0,229,255,.15);--r:16px;
+  --cost-color:#e879f9;--cost-bg:rgba(232,121,249,.08);--cost-border:rgba(232,121,249,.2);
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html,body{height:100%;background:var(--deep);color:var(--text);font-family:'Cairo',sans-serif;overflow-x:hidden;overscroll-behavior:none;}
@@ -105,6 +106,19 @@ body::before{content:'';position:fixed;inset:0;background:
 .sum-chip{flex-shrink:0;background:var(--glass);border:1px solid var(--gb);border-radius:18px;padding:9px 14px;text-align:center;min-width:90px;}
 .sum-chip .v{font-size:16px;font-weight:900;}
 .sum-chip .l{font-size:10px;color:var(--muted);margin-top:2px;}
+.sum-chip.cost-chip{background:var(--cost-bg);border-color:var(--cost-border);}
+.sum-chip.cost-chip .v{color:var(--cost-color);}
+
+/* ── COST CARDS ── */
+.cost-card{background:var(--cost-bg);border:1px solid var(--cost-border);border-radius:var(--r);padding:15px;margin-bottom:11px;position:relative;overflow:hidden;}
+.cost-card-ttl{font-size:13px;font-weight:700;color:var(--cost-color);display:flex;align-items:center;gap:7px;margin-bottom:11px;}
+.cost-sec-row{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:rgba(0,0,0,.2);border-radius:9px;margin-bottom:6px;}
+.cost-sec-name{font-size:12px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:6px;}
+.cost-sec-val{font-size:13px;font-weight:800;color:var(--cost-color);}
+.cost-sec-detail{font-size:10px;color:var(--muted);margin-top:2px;}
+.cost-total-row{background:linear-gradient(135deg,rgba(232,121,249,.15),rgba(232,121,249,.05));border:1px solid var(--cost-border);border-radius:9px;padding:11px 13px;display:flex;align-items:center;justify-content:space-between;margin-top:9px;}
+.cost-total-lbl{font-size:12px;color:var(--muted);font-weight:600;}
+.cost-total-val{font-size:17px;font-weight:900;color:var(--cost-color);}
 
 /* ── FORMS ── */
 .fg{margin-bottom:13px;}
@@ -112,6 +126,13 @@ body::before{content:'';position:fixed;inset:0;background:
 .fc{width:100%;background:rgba(0,0,0,.3);border:1px solid var(--gb);border-radius:9px;padding:11px 13px;font-family:'Cairo',sans-serif;font-size:13px;color:var(--text);outline:none;transition:all .25s;-webkit-appearance:none;appearance:none;}
 .fc:focus{border-color:var(--teal);background:rgba(0,180,216,.08);box-shadow:0 0 0 3px rgba(0,180,216,.12);}
 select.fc option{background:#071e35;color:var(--text);}
+
+/* ── PRICE INPUT ── */
+.price-input-wrap{position:relative;}
+.price-input-wrap .fc{padding-left:50px;}
+.price-currency{position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:12px;font-weight:700;color:var(--cost-color);pointer-events:none;}
+.price-calc-box{background:var(--cost-bg);border:1px solid var(--cost-border);border-radius:9px;padding:9px 13px;font-size:11px;color:var(--muted);line-height:1.75;margin-top:8px;}
+.price-calc-box b{color:var(--cost-color);}
 
 /* ── TOGGLE GROUPS ── */
 .tg{display:flex;gap:5px;flex-wrap:wrap;}
@@ -199,6 +220,10 @@ select.fc option{background:#071e35;color:var(--text);}
 .c30{color:var(--cyan)!important;}
 .c18{color:var(--green)!important;}
 .c25{color:var(--gold)!important;}
+
+/* ── PRICE TAG ── */
+.fi-price{font-size:10px;color:var(--cost-color);font-weight:700;background:var(--cost-bg);border:1px solid var(--cost-border);border-radius:5px;padding:1px 5px;margin-top:2px;display:inline-block;}
+.fi-cost{font-size:11px;font-weight:700;color:var(--cost-color);}
 </style>
 </head>
 <body>
@@ -237,8 +262,14 @@ select.fc option{background:#071e35;color:var(--text);}
         <div class="sum-chip"><div class="v" id="d-feed">—</div><div class="l">إجمالي العلف</div></div>
         <div class="sum-chip"><div class="v" id="d-sec">—</div><div class="l">قطاعات نشطة</div></div>
         <div class="sum-chip"><div class="v" id="d-ops">—</div><div class="l">عمليات اليوم</div></div>
+        <div class="sum-chip cost-chip"><div class="v" id="d-totalcost">—</div><div class="l">إجمالي التكلفة</div></div>
       </div>
-      <div class="pg-ttl" style="font-size:14px;margin-bottom:10px;">🌊 القطاعات</div>
+
+      <!-- تكلفة الأسماك -->
+      <div class="pg-ttl" style="font-size:14px;margin-bottom:10px;">💰 تكلفة الأسماك</div>
+      <div id="d-costs"><div class="loading"><div class="spin"></div> تحميل...</div></div>
+
+      <div class="pg-ttl" style="font-size:14px;margin-top:18px;margin-bottom:10px;">🌊 القطاعات</div>
       <div id="d-sectors"><div class="loading"><div class="spin"></div> تحميل...</div></div>
       <div class="pg-ttl" style="font-size:14px;margin-top:18px;margin-bottom:10px;">🏭 المخزن</div>
       <div id="d-store"><div class="loading"><div class="spin"></div> تحميل...</div></div>
@@ -398,8 +429,23 @@ select.fc option{background:#071e35;color:var(--text);}
         </div>
         <div class="fg">
           <label class="fl" id="fi-val-lbl">العدد (قطعة)</label>
-          <input class="fc" type="number" id="fi-val" placeholder="أدخل الكمية" min="0" step="1">
+          <input class="fc" type="number" id="fi-val" placeholder="أدخل الكمية" min="0" step="1" oninput="calcFishCostPreview()">
         </div>
+
+        <!-- ══ حقل السعر الجديد ══ -->
+        <div class="fg">
+          <label class="fl" style="color:var(--cost-color);">💰 سعر الشراء <span style="font-size:10px;color:var(--muted);">(اختياري)</span></label>
+          <div class="price-input-wrap">
+            <input class="fc" type="number" id="fi-price" placeholder="0.00" min="0" step="0.01" oninput="calcFishCostPreview()" style="border-color:var(--cost-border);padding-left:50px;">
+            <span class="price-currency">ج.م</span>
+          </div>
+          <div class="ibox" id="fi-price-unit-lbl" style="margin-top:6px;margin-bottom:0;font-size:10px;color:var(--muted);">
+            السعر لكل: <span id="fi-price-per">قطعة</span>
+          </div>
+          <div class="price-calc-box" id="fi-cost-preview" style="display:none;"></div>
+        </div>
+        <!-- ══ نهاية حقل السعر ══ -->
+
         <div class="fg">
           <label class="fl">تاريخ الإضافة</label>
           <input class="fc" type="date" id="fi-date">
@@ -452,6 +498,13 @@ select.fc option{background:#071e35;color:var(--text);}
       <select class="fc" id="ef-unit">
         <option value="count">عدد (قطعة)</option><option value="kg">كجم</option><option value="ton">طن</option>
       </select></div>
+    <div class="fg">
+      <label class="fl" style="color:var(--cost-color);">💰 سعر الشراء <span style="font-size:10px;color:var(--muted);">(اختياري)</span></label>
+      <div class="price-input-wrap">
+        <input class="fc" type="number" id="ef-price" min="0" step="0.01" placeholder="0.00" style="border-color:var(--cost-border);padding-left:50px;">
+        <span class="price-currency">ج.م</span>
+      </div>
+    </div>
     <div class="fg"><label class="fl">التاريخ</label><input class="fc" type="date" id="ef-date"></div>
     <div style="display:flex;gap:9px;">
       <button class="btn btn-green" onclick="saveEditFish()">💾 حفظ</button>
@@ -549,32 +602,20 @@ const FC  = {'30':'var(--cyan)','18':'var(--green)','25':'var(--gold)'};
 const B25 = 25, B50 = 50, TON = 1000;
 
 // ───── UNIT helpers ─────
-// Store structure: { b25: N, b50: N, ton: N }  (per feed-type × float key)
-// "b25/b50" = number of bags | "ton" = number of full tons
 function emptyStock(){ return {b25:0, b50:0, ton:0}; }
-
-function stockToKg(s){
-  if(!s) return 0;
-  return (s.b25||0)*B25 + (s.b50||0)*B50 + (s.ton||0)*TON;
-}
-
+function stockToKg(s){ if(!s) return 0; return (s.b25||0)*B25 + (s.b50||0)*B50 + (s.ton||0)*TON; }
 function unitToStock(val, unit){
   if(unit==='bag25') return {b25: val, b50:0, ton:0};
   if(unit==='bag50') return {b25:0, b50: val, ton:0};
   if(unit==='ton')   return {b25:0, b50:0, ton: val};
   return emptyStock();
 }
-
-// Can we subtract delta from stock?
-// Subtraction works in order: tons first, then b50, then b25 (within same unit)
-// But user picks a unit so subtract from that unit only
 function canSubtract(stock, unit, val){
   if(unit==='bag25') return (stock.b25||0) >= val;
   if(unit==='bag50') return (stock.b50||0) >= val;
   if(unit==='ton')   return (stock.ton||0)  >= val;
   return false;
 }
-
 function subtractStock(stock, unit, val){
   const s = {...stock};
   if(unit==='bag25') s.b25 = (s.b25||0) - val;
@@ -582,7 +623,6 @@ function subtractStock(stock, unit, val){
   if(unit==='ton')   s.ton  = (s.ton||0)  - val;
   return s;
 }
-
 function addStockDelta(stock, unit, val){
   const s = {...stock};
   if(unit==='bag25') s.b25 = (s.b25||0) + val;
@@ -590,7 +630,6 @@ function addStockDelta(stock, unit, val){
   if(unit==='ton')   s.ton  = (s.ton||0)  + val;
   return s;
 }
-
 function fmtStock(s){
   if(!s) return '<b>0</b>';
   const parts = [];
@@ -600,9 +639,7 @@ function fmtStock(s){
   if(!parts.length) return '<b>0</b>';
   return parts.join(' + ');
 }
-
 function fmtStockKg(s){ return (stockToKg(s)/1000).toFixed(3)+' طن ('+stockToKg(s).toLocaleString('ar-EG')+' كجم)'; }
-
 function fmtFish(f){
   if(!f) return '—';
   const u=f.unit||'kg';
@@ -610,7 +647,6 @@ function fmtFish(f){
   if(u==='ton')   return f.value+' طن';
   return f.value+' كجم';
 }
-
 function fishKg(f){
   if(!f) return 0;
   const u=f.unit||'kg';
@@ -618,19 +654,54 @@ function fishKg(f){
   if(u==='count') return (f.value||0)*0.3;
   return f.value||0;
 }
-
-function fmtDate(d){
-  if(!d) return ''; 
-  return new Date(d).toLocaleDateString('ar-EG',{day:'2-digit',month:'short',year:'numeric'});
-}
+function fmtDate(d){ if(!d) return ''; return new Date(d).toLocaleDateString('ar-EG',{day:'2-digit',month:'short',year:'numeric'}); }
 function ts(){ return Date.now(); }
-
-// store key = "30_float" etc.
 function sk(type, float){ return `${type}_${float}`; }
+function getStock(type, float){ const key = sk(type,float); return state.store[key] || emptyStock(); }
 
-function getStock(type, float){
-  const key = sk(type,float);
-  return state.store[key] || emptyStock();
+// ───── COST HELPERS (جديد) ─────
+// حساب التكلفة الإجمالية لسمكة واحدة بناءً على السعر × الكمية
+function calcFishTotalCost(f){
+  if(!f || !f.price || f.price <= 0) return 0;
+  return (f.value||0) * (f.price||0);
+}
+
+// تنسيق المبلغ بالجنيه المصري
+function fmtCost(v){
+  if(!v || v===0) return '—';
+  return v.toLocaleString('ar-EG',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' ج.م';
+}
+
+// حساب التكلفة الكلية لقطاع
+function sectorTotalCost(secKey){
+  const data = state.sectors[secKey]||{};
+  if(!data.fish) return 0;
+  return Object.values(data.fish).reduce((s,f)=>s+calcFishTotalCost(f),0);
+}
+
+// حساب التكلفة الإجمالية لكل المزرعة
+function totalFarmCost(){
+  return Object.keys(SECTORS).reduce((s,k)=>s+sectorTotalCost(k),0);
+}
+
+// معاينة حساب التكلفة عند إدخال السعر في نموذج الإضافة
+function calcFishCostPreview(){
+  const val   = parseFloat(document.getElementById('fi-val').value)||0;
+  const price = parseFloat(document.getElementById('fi-price').value)||0;
+  const el    = document.getElementById('fi-cost-preview');
+  if(!el) return;
+  if(!price || !val){ el.style.display='none'; return; }
+  const total = val * price;
+  el.style.display='block';
+  el.innerHTML=`إجمالي التكلفة: <b>${fmtCost(total)}</b>  (${val} × ${price.toLocaleString('ar-EG')} ج.م)`;
+}
+
+// تحديث وصف وحدة السعر تبعاً للوحدة المختارة
+function updatePricePerLabel(){
+  const lbl = document.getElementById('fi-price-per');
+  if(!lbl) return;
+  const u = state.fishUnit;
+  lbl.textContent = u==='count'?'قطعة': u==='kg'?'كجم': u==='ton'?'طن':'—';
 }
 
 // ───── STATE ─────
@@ -681,7 +752,6 @@ function sStoreUnit(u){
   Object.assign(document.getElementById('s-qty'),{step:UNIT_STEP[u],placeholder:UNIT_PH[u]});
   sStoreCalc();
 }
-
 function sFeedUnit(u){
   state.feedUnit=u;
   ['bag25','bag50','ton'].forEach(x=> document.getElementById('f-u'+(x==='bag25'?'25':x==='bag50'?'50':'ton')).classList.toggle('active',u===x));
@@ -689,7 +759,6 @@ function sFeedUnit(u){
   Object.assign(document.getElementById('f-qty'),{step:UNIT_STEP[u],placeholder:UNIT_PH[u]});
   fFeedCalc();
 }
-
 function sFishUnit(u){
   state.fishUnit=u;
   document.getElementById('fi-ucount').classList.toggle('active',u==='count');
@@ -697,6 +766,8 @@ function sFishUnit(u){
   document.getElementById('fi-uton').classList.toggle('active',u==='ton');
   document.getElementById('fi-val-lbl').textContent = {count:'العدد (قطعة)',kg:'الوزن (كجم)',ton:'الوزن (طن)'}[u];
   document.getElementById('fi-val').step = u==='count'?'1':'0.001';
+  updatePricePerLabel(); // تحديث وصف وحدة السعر
+  calcFishCostPreview();
 }
 
 // ───── CALC PREVIEWS ─────
@@ -709,7 +780,6 @@ function sStoreCalc(){
   el.style.display='block';
   el.innerHTML=`الإجمالي: <b style="color:var(--cyan)">${kg.toLocaleString('ar-EG')} كجم</b> = <b>${(kg/1000).toFixed(3)}</b> طن`;
 }
-
 function fFeedCalc(){
   const val=parseFloat(document.getElementById('f-qty').value)||0;
   const el=document.getElementById('f-calc');
@@ -720,7 +790,6 @@ function fFeedCalc(){
   el.innerHTML=`الإجمالي: <b style="color:var(--cyan)">${kg.toLocaleString('ar-EG')} كجم</b> = <b>${(kg/1000).toFixed(3)}</b> طن`;
   fStockInfo();
 }
-
 function fStockInfo(){
   const type  = document.getElementById('f-ftype')?.value;
   const float = state.feedFloat;
@@ -735,11 +804,21 @@ function fStockInfo(){
 function renderDashboard(){
   const totalFish = Object.values(state.sectors).reduce((s,sec)=>{ if(sec&&sec.fish) Object.values(sec.fish).forEach(f=>s+=fishKg(f)); return s; },0);
   const totalFeed = Object.values(state.store).reduce((s,v)=>s+stockToKg(v),0);
+  const farmCost  = totalFarmCost();
+
   document.getElementById('d-fish').textContent = totalFish>=1000?(totalFish/1000).toFixed(1)+' طن':totalFish.toFixed(0)+' كجم';
   document.getElementById('d-feed').textContent = totalFeed>=1000?(totalFeed/1000).toFixed(1)+' طن':totalFeed.toFixed(0)+' كجم';
   document.getElementById('d-sec').textContent  = Object.values(state.sectors).filter(s=>s&&s.fish&&Object.keys(s.fish).length>0).length;
   const today=new Date().toISOString().split('T')[0];
   document.getElementById('d-ops').textContent  = Object.values(state.logs).filter(l=>l&&l.date&&l.date.startsWith(today)).length;
+
+  // ── إجمالي التكلفة في الـ chip ──
+  document.getElementById('d-totalcost').textContent = farmCost>0
+    ? (farmCost>=1000000?(farmCost/1000000).toFixed(2)+' م': farmCost>=1000?(farmCost/1000).toFixed(1)+' ك': farmCost.toFixed(0))+' ج.م'
+    : '—';
+
+  // ── بطاقات التكلفة لكل قطاع ──
+  renderCostCards();
 
   document.getElementById('d-sectors').innerHTML = Object.entries(SECTORS).map(([k,sec])=>{
     const fl = (state.sectors[k]?.fish) ? Object.values(state.sectors[k].fish) : [];
@@ -771,6 +850,54 @@ function renderDashboard(){
     : '<div class="empty"><div class="ei">📋</div><p>لا توجد عمليات بعد</p></div>';
 }
 
+// ── عرض بطاقات التكلفة (جديد) ──
+function renderCostCards(){
+  const el = document.getElementById('d-costs');
+  if(!el) return;
+  const farmCost = totalFarmCost();
+  let hasCost = false;
+
+  const rows = Object.entries(SECTORS).map(([k,sec])=>{
+    const cost = sectorTotalCost(k);
+    if(cost>0) hasCost=true;
+    const data  = state.sectors[k]||{};
+    const flist = data.fish ? Object.values(data.fish) : [];
+    // تفصيل حسب نوع السمك
+    const byType = {};
+    flist.forEach(f=>{
+      if(!f.price||f.price<=0) return;
+      const t=f.type||'غير محدد';
+      if(!byType[t]) byType[t]={qty:0,cost:0};
+      byType[t].qty  += f.value||0;
+      byType[t].cost += calcFishTotalCost(f);
+    });
+    const details = Object.entries(byType).map(([t,d])=>
+      `<span style="margin-left:8px;">${FISH_ICO[t]||'🐟'} ${t}: <b style="color:var(--cost-color);">${fmtCost(d.cost)}</b></span>`
+    ).join('');
+    return `<div class="cost-sec-row">
+      <div>
+        <div class="cost-sec-name"><div style="background:linear-gradient(135deg,${sec.color}22,${sec.color}11);width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px;">${sec.icon}</div>${sec.name}</div>
+        ${details?`<div class="cost-sec-detail">${details}</div>`:''}
+      </div>
+      <div class="cost-sec-val">${cost>0?fmtCost(cost):'—'}</div>
+    </div>`;
+  }).join('');
+
+  if(!hasCost){
+    el.innerHTML=`<div class="cost-card"><div class="cost-card-ttl">💰 تكلفة الأسماك لكل قطاع</div><div class="empty" style="padding:18px;"><div class="ei">💸</div><p>لم يُدخل سعر لأي سمكة بعد</p></div></div>`;
+    return;
+  }
+
+  el.innerHTML=`<div class="cost-card">
+    <div class="cost-card-ttl">💰 تكلفة الأسماك لكل قطاع</div>
+    ${rows}
+    <div class="cost-total-row">
+      <div class="cost-total-lbl">💎 إجمالي التكلفة الكلية</div>
+      <div class="cost-total-val">${fmtCost(farmCost)}</div>
+    </div>
+  </div>`;
+}
+
 // ───── SECTORS RENDER ─────
 function renderSectors(){
   let html='';
@@ -778,27 +905,42 @@ function renderSectors(){
     const data  = state.sectors[k]||{};
     const flist = data.fish ? Object.entries(data.fish) : [];
     const isExp = state.expandedSectors.has(k);
+    const secCost = sectorTotalCost(k);
     html += `<div class="sec-card" id="sc-${k}">
       <div class="sec-hdr" onclick="toggleSec('${k}')">
         <div class="sec-name"><div class="sec-ico" style="background:linear-gradient(135deg,${sec.color}22,${sec.color}11);">${sec.icon}</div>${sec.name}</div>
-        <div style="display:flex;align-items:center;gap:7px;"><div class="sec-badge">${flist.length} نوع</div><span style="color:var(--muted);font-size:16px;">${isExp?'▲':'▼'}</span></div>
+        <div style="display:flex;align-items:center;gap:7px;">
+          ${secCost>0?`<span style="font-size:11px;font-weight:700;color:var(--cost-color);background:var(--cost-bg);border:1px solid var(--cost-border);border-radius:8px;padding:1px 7px;">${fmtCost(secCost)}</span>`:''}
+          <div class="sec-badge">${flist.length} نوع</div>
+          <span style="color:var(--muted);font-size:16px;">${isExp?'▲':'▼'}</span>
+        </div>
       </div>
       <div class="sec-exp ${isExp?'open':''}" id="se-${k}">
         <div class="fish-list">
           ${flist.length===0
             ?'<div class="empty" style="padding:18px;"><div class="ei">🐠</div><p>لا يوجد أسماك</p></div>'
-            :flist.map(([fid,f])=>`
+            :flist.map(([fid,f])=>{
+              const cost = calcFishTotalCost(f);
+              return `
               <div class="fish-item">
                 <div class="fi-info">
                   <span style="font-size:19px;">${FISH_ICO[f.type]||'🐟'}</span>
-                  <div><div class="fi-name">${f.type}</div><div class="fi-date">${fmtDate(f.date)}</div></div>
+                  <div>
+                    <div class="fi-name">${f.type}</div>
+                    ${f.price>0?`<div class="fi-price">💰 ${f.price.toLocaleString('ar-EG')} ج.م / ${f.unit==='count'?'قطعة':f.unit==='kg'?'كجم':'طن'}</div>`:''}
+                    <div class="fi-date">${fmtDate(f.date)}</div>
+                  </div>
                 </div>
                 <div style="display:flex;align-items:center;gap:5px;">
-                  <div class="fi-val">${fmtFish(f)}</div>
+                  <div style="text-align:left;">
+                    <div class="fi-val">${fmtFish(f)}</div>
+                    ${cost>0?`<div class="fi-cost">${fmtCost(cost)}</div>`:''}
+                  </div>
                   <button class="b-edit" onclick="openEditFish('${k}','${fid}')">✏️</button>
                   <button class="b-del"  onclick="delFish('${k}','${fid}')">🗑️</button>
                 </div>
-              </div>`).join('')}
+              </div>`;
+            }).join('')}
         </div>
         <button class="btn btn-green" style="margin-top:10px;" onclick="quickFish('${k}')">➕ إضافة سمك</button>
       </div>
@@ -879,6 +1021,7 @@ function logHTML(log, withAct){
   } else if(log.type==='fish_in'){
     title=`إضافة ${log.fishType} ← ${sname}`;
     detail=`الكمية: <b style="color:var(--gold)">${log.fishDisplay||'—'}</b>`;
+    if(log.totalCost>0) detail+=` | التكلفة: <b style="color:var(--cost-color);">${fmtCost(log.totalCost)}</b>`;
   } else if(log.type==='store_in'){
     title=`استلام علف ${log.feedType}% ${log.float==='float'?'🌊 عايم':'⬇️ غاطس'} → المخزن`;
     detail=`الكمية: <b style="color:var(--gold)">${log.qtyLabel||'—'}</b> (${(log.qty||0).toLocaleString('ar-EG')} كجم)`;
@@ -920,26 +1063,14 @@ async function doAddStore(){
   const date  = document.getElementById('s-date').value;
   if(!val||val<=0) return toast('❌ أدخل كمية صحيحة','err');
   if(!date)        return toast('❌ اختر التاريخ','err');
-
   const delta   = unitToStock(val, state.storeUnit);
   const kg      = stockToKg(delta);
   const key     = sk(type,float);
   const current = getStock(type,float);
-  const newStock= {
-    b25: (current.b25||0) + (delta.b25||0),
-    b50: (current.b50||0) + (delta.b50||0),
-    ton: (current.ton||0) + (delta.ton||0),
-  };
-
+  const newStock= { b25:(current.b25||0)+(delta.b25||0), b50:(current.b50||0)+(delta.b50||0), ton:(current.ton||0)+(delta.ton||0) };
   await window.dbSet(window.dbRef(db,`store/${key}`), newStock);
-
   const lr = window.dbPush(window.dbRef(db,'logs'));
-  await window.dbSet(lr,{
-    type:'store_in', feedType:type, float, qty:kg,
-    qtyLabel: fmtStockEntry(val, state.storeUnit),
-    date, ts:ts()
-  });
-
+  await window.dbSet(lr,{ type:'store_in', feedType:type, float, qty:kg, qtyLabel:fmtStockEntry(val,state.storeUnit), date, ts:ts() });
   document.getElementById('s-qty').value='';
   document.getElementById('s-calc').style.display='none';
   toast(`✅ تم إضافة ${fmtStockEntry(val, state.storeUnit)} علف ${type}%`,'ok');
@@ -955,55 +1086,54 @@ async function doFeedOut(){
   const notes    = document.getElementById('f-notes').value;
   if(!val||val<=0) return toast('❌ أدخل كمية صحيحة','err');
   if(!date)        return toast('❌ اختر التاريخ','err');
-
   if(!canSubtract(getStock(feedType,float), state.feedUnit, val)){
     const s=getStock(feedType,float);
     return toast(`❌ لا يوجد رصيد كافٍ — المتاح: ${fmtStock(s)}`,'err');
   }
-
   const key     = sk(feedType,float);
   const current = getStock(feedType,float);
   const newStock= subtractStock(current, state.feedUnit, val);
   const kg      = stockToKg(unitToStock(val, state.feedUnit));
-
   await window.dbUpdate(window.dbRef(db,`store/${key}`), newStock);
-
   const lr = window.dbPush(window.dbRef(db,'logs'));
-  await window.dbSet(lr,{
-    type:'feed_out', feedType, float, qty:kg,
-    qtyLabel: fmtStockEntry(val, state.feedUnit),
-    remLabel: fmtStock(newStock),
-    sector, date, notes, ts:ts()
-  });
-
+  await window.dbSet(lr,{ type:'feed_out', feedType, float, qty:kg, qtyLabel:fmtStockEntry(val,state.feedUnit), remLabel:fmtStock(newStock), sector, date, notes, ts:ts() });
   document.getElementById('f-qty').value='';
   document.getElementById('f-notes').value='';
   document.getElementById('f-calc').style.display='none';
   toast(`✅ تم إخراج ${fmtStockEntry(val,state.feedUnit)} | متبقي: ${fmtStock(newStock)}`,'ok');
 }
 
-// ADD FISH
+// ADD FISH  ← تمت إضافة حقل السعر هنا
 async function doAddFish(){
   const sector = document.getElementById('fi-sec').value;
   const type   = document.getElementById('fi-type').value;
   const value  = parseFloat(document.getElementById('fi-val').value);
   const unit   = state.fishUnit;
   const date   = document.getElementById('fi-date').value;
+  const price  = parseFloat(document.getElementById('fi-price').value)||0; // ← السعر
   if(!value||value<=0) return toast('❌ أدخل كمية صحيحة','err');
   if(!date)             return toast('❌ اختر التاريخ','err');
 
-  const fishRef = window.dbPush(window.dbRef(db,`sectors/${sector}/fish`));
-  await window.dbSet(fishRef,{type,value,unit,date,ts:ts()});
+  const fishData = {type, value, unit, date, ts:ts()};
+  if(price>0) fishData.price = price; // ← نحفظ السعر فقط لو أُدخل
 
+  const fishRef = window.dbPush(window.dbRef(db,`sectors/${sector}/fish`));
+  await window.dbSet(fishRef, fishData);
+
+  const totalCost = price>0 ? value*price : 0;
   const lr = window.dbPush(window.dbRef(db,'logs'));
   await window.dbSet(lr,{
     type:'fish_in', fishType:type,
     fishDisplay: fmtFish({value,unit}),
-    qty: fishKg({value,unit}), sector, date, ts:ts()
+    qty: fishKg({value,unit}),
+    totalCost: totalCost, // ← نحفظ التكلفة في السجل
+    sector, date, ts:ts()
   });
 
   document.getElementById('fi-val').value='';
-  toast(`✅ تم إضافة ${fmtFish({value,unit})} ${type}`,'ok');
+  document.getElementById('fi-price').value='';
+  document.getElementById('fi-cost-preview').style.display='none';
+  toast(`✅ تم إضافة ${fmtFish({value,unit})} ${type}${totalCost>0?' — '+fmtCost(totalCost):''}`,'ok');
 }
 
 // ───── FORMAT helper ─────
@@ -1015,7 +1145,6 @@ function fmtStockEntry(val,unit){
 }
 
 // ───── EDIT / DELETE ─────
-
 function openEditFish(sec,fid){
   const f=state.sectors[sec]?.fish?.[fid]; if(!f) return;
   document.getElementById('ef-id').value=fid;
@@ -1023,6 +1152,7 @@ function openEditFish(sec,fid){
   document.getElementById('ef-type').value=f.type;
   document.getElementById('ef-val').value=f.value;
   document.getElementById('ef-unit').value=f.unit||'kg';
+  document.getElementById('ef-price').value=f.price||'';  // ← السعر
   document.getElementById('ef-date').value=f.date||'';
   oModal('mo-fish');
 }
@@ -1030,13 +1160,16 @@ async function saveEditFish(){
   const sec=document.getElementById('ef-sec').value;
   const fid=document.getElementById('ef-id').value;
   const v=parseFloat(document.getElementById('ef-val').value);
+  const price=parseFloat(document.getElementById('ef-price').value)||0;
   if(!v||v<=0) return toast('❌ قيمة غير صحيحة','err');
-  await window.dbUpdate(window.dbRef(db,`sectors/${sec}/fish/${fid}`),{
+  const upd={
     type:document.getElementById('ef-type').value,
     value:v,
     unit:document.getElementById('ef-unit').value,
     date:document.getElementById('ef-date').value,
-  });
+  };
+  if(price>0) upd.price=price;
+  await window.dbUpdate(window.dbRef(db,`sectors/${sec}/fish/${fid}`), upd);
   cModal('mo-fish');
   toast('✅ تم التعديل','ok');
 }
@@ -1045,7 +1178,6 @@ async function delFish(sec,fid){
   await window.dbRemove(window.dbRef(db,`sectors/${sec}/fish/${fid}`));
   toast('🗑️ تم الحذف','ok');
 }
-
 function openEditFeedLog(lid){
   const l=state.logs[lid]; if(!l) return;
   document.getElementById('efl-id').value=lid;
@@ -1074,7 +1206,6 @@ async function delLog(lid){
   await window.dbRemove(window.dbRef(db,`logs/${lid}`));
   toast('🗑️ تم الحذف','ok');
 }
-
 function openEditStore(key){
   const s=state.store[key]||emptyStock();
   document.getElementById('es-key').value=key;
