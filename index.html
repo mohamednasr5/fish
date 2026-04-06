@@ -462,9 +462,6 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
 </head>
 <body>
 
-<!-- ══════════════════════════════════════
-     LOGIN SCREEN
-══════════════════════════════════════ -->
 <div id="login-screen">
   <div class="login-bg-art"></div>
   <div class="login-fish-bg">🐟</div>
@@ -478,7 +475,6 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
 
     <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:10px;text-align:center;">أدخل رمز الدخول</div>
 
-    <!-- PIN dots -->
     <div class="pin-display" id="pin-dots">
       <div class="pin-dot" id="pd0"></div>
       <div class="pin-dot" id="pd1"></div>
@@ -487,7 +483,6 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
       <div class="pin-dot" id="pd4"></div>
     </div>
 
-    <!-- PIN Keypad -->
     <div class="pin-keypad">
       <button class="pk-btn" onclick="pinKey('1')">١</button>
       <button class="pk-btn" onclick="pinKey('2')">٢</button>
@@ -520,7 +515,6 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
       </div>
     </div>
 
-    <!-- Manual input (hidden by default) -->
     <div id="manual-login" style="display:none;margin-top:16px;">
       <div class="login-input-wrap">
         <span class="login-icon">🔒</span>
@@ -532,9 +526,6 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
   </div>
 </div>
 
-<!-- ══════════════════════════════════════
-     WELCOME BANNER
-══════════════════════════════════════ -->
 <div id="welcome-banner">
   <div class="welcome-card">
     <div class="wc-fish" id="wc-fish">🐟</div>
@@ -546,7 +537,6 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
   </div>
 </div>
 
-<!-- Viewer Badge -->
 <div class="viewer-badge" id="viewer-badge">👁️ وضع العرض فقط</div>
 
 <div class="bubble"></div><div class="bubble"></div><div class="bubble"></div>
@@ -578,7 +568,6 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
 
   <main class="main">
 
-    <!-- ═══ DASHBOARD ═══ -->
     <div class="pg active" id="pg-dashboard">
       <div class="pg-ttl">📊 لوحة التحكم</div>
       <div class="sum-row">
@@ -609,13 +598,11 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
       <div id="d-logs"><div class="loading"><div class="spin"></div> تحميل...</div></div>
     </div>
 
-    <!-- ═══ SECTORS ═══ -->
     <div class="pg" id="pg-sectors">
       <div class="pg-ttl">🌊 إدارة القطاعات</div>
       <div id="sectorsEl"><div class="loading"><div class="spin"></div> تحميل...</div></div>
     </div>
 
-    <!-- ═══ STORE ═══ -->
     <div class="pg" id="pg-store">
       <div class="pg-ttl">🏭 المخزن</div>
       <div id="storeEl"><div class="loading"><div class="spin"></div> تحميل...</div></div>
@@ -664,7 +651,6 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
       </div>
     </div>
 
-    <!-- ═══ FEED ═══ -->
     <div class="pg" id="pg-feed">
       <div class="pg-ttl">🍽️ إخراج علف للقطاع</div>
       <div class="card">
@@ -715,7 +701,6 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
           <div class="ibox" id="f-calc" style="margin-top:8px;margin-bottom:0;display:none;"></div>
         </div>
 
-        <!-- ════ حقل سعر العلف ════ -->
         <div class="fg">
           <label class="fl" style="color:var(--feed-cost-color);">💵 سعر الوحدة <span style="font-size:10px;color:var(--muted);" id="f-price-unit-lbl">(سعر الشيكارة 25 كجم)</span></label>
           <div class="feed-price-input-wrap">
@@ -724,7 +709,6 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
           </div>
           <div class="feed-price-calc" id="f-price-calc"></div>
         </div>
-        <!-- ════════════════════════ -->
 
         <div class="fg">
           <label class="fl">تاريخ الإخراج</label>
@@ -738,7 +722,6 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
         <button class="btn" onclick="doFeedOut()">✅ تأكيد الإخراج</button>
       </div>
 
-      <!-- ADD FISH -->
       <div class="card">
         <div class="card-ttl">🐠 إضافة أسماك لقطاع</div>
 
@@ -792,14 +775,12 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
       </div>
     </div>
 
-    <!-- Feed readonly for viewer -->
     <div class="pg" id="pg-feed-readonly" style="display:none;">
       <div class="pg-ttl">🍽️ التغذية</div>
       <div class="ibox warn"><b>⚠️ وضع العرض فقط</b> — لا يمكن إجراء تعديلات</div>
       <div id="feed-readonly-data"><div class="loading"><div class="spin"></div> تحميل...</div></div>
     </div>
 
-    <!-- ═══ LOGS ═══ -->
     <div class="pg" id="pg-logs">
       <div class="pg-ttl">📋 سجل العمليات</div>
       <div style="display:flex;gap:7px;margin-bottom:13px;">
@@ -826,7 +807,6 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
   </main>
 </div>
 
-<!-- ═══ MODALS ═══ -->
 <div class="mo" id="mo-fish" onclick="cModal('mo-fish',event)">
   <div class="mo-box">
     <div class="mo-hdl"></div>
@@ -899,7 +879,6 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
   </div>
 </div>
 
-<!-- ═══ HARVEST MODAL ═══ -->
 <div class="mo" id="mo-harvest" onclick="cModal('mo-harvest',event)">
   <div class="mo-box">
     <div class="mo-hdl"></div>
@@ -923,31 +902,13 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
     </div>
 
     <div class="fg">
-      <label class="fl">الوحدة</label>
-      <div class="tg">
-        <button class="tb active" id="hv-ukg"    onclick="sHarvestUnit('kg')">⚖️ كجم</button>
-        <button class="tb"        id="hv-uton"   onclick="sHarvestUnit('ton')">🏋️ طن</button>
-        <button class="tb"        id="hv-ucount" onclick="sHarvestUnit('count')">🔢 عدد</button>
-      </div>
-    </div>
-
-    <div class="fg">
-      <label class="fl" id="hv-qty-lbl">الكمية (كجم)</label>
-      <input class="fc" type="number" id="hv-qty" placeholder="0" min="0" step="0.001" oninput="calcHarvestPreview()">
-    </div>
-
-    <div class="fg">
-      <label class="fl" style="color:var(--harvest-color);">💵 سعر البيع <span style="font-size:10px;color:var(--muted);" id="hv-price-per-lbl">لكل كجم</span></label>
+      <label class="fl" style="color:var(--harvest-color);">💵 إجمالي مبلغ البيع (السمك الخارج بكام)</label>
       <div style="position:relative;">
-        <input class="fc" type="number" id="hv-price" placeholder="0.00" min="0" step="0.01"
-               oninput="calcHarvestPreview()"
+        <input class="fc" type="number" id="hv-total-price" placeholder="أدخل المبلغ الإجمالي" min="0" step="1"
                style="border-color:var(--harvest-border);padding-left:50px;">
         <span style="position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:12px;font-weight:700;color:var(--harvest-color);pointer-events:none;">ج.م</span>
       </div>
     </div>
-
-    <!-- Preview box -->
-    <div id="hv-preview" style="display:none;" class="ibox" style="margin-bottom:12px;"></div>
 
     <div class="fg">
       <label class="fl">التاريخ</label>
@@ -989,9 +950,6 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════
-     JAVASCRIPT
-═══════════════════════════════════════════════ -->
 <script>
 // ══════════════════════════════════════
 // AUTH
@@ -1200,7 +1158,6 @@ function totalFarmCost(){
 }
 
 // ── FEED COST HELPERS (NEW) ──
-// حساب تكلفة العلف المُخرج لكل قطاع
 function sectorFeedCost(secKey){
   return Object.values(state.logs)
     .filter(l=>l && l.type==='feed_out' && l.sector===secKey && l.feedCost>0)
@@ -1231,72 +1188,33 @@ function sectorPnL(secKey){
   return { revenue, fishCost, feedCost, totalCost, net: revenue - totalCost };
 }
 
-// ── HARVEST UNIT ──
-let harvestUnit = 'kg';
-function sHarvestUnit(u){
-  harvestUnit = u;
-  document.getElementById('hv-ukg').classList.toggle('active',u==='kg');
-  document.getElementById('hv-uton').classList.toggle('active',u==='ton');
-  document.getElementById('hv-ucount').classList.toggle('active',u==='count');
-  document.getElementById('hv-qty-lbl').textContent = {kg:'الكمية (كجم)',ton:'الكمية (طن)',count:'العدد (قطعة)'}[u];
-  document.getElementById('hv-price-per-lbl').textContent = {kg:'لكل كجم',ton:'للطن',count:'للقطعة'}[u];
-  calcHarvestPreview();
-}
-function calcHarvestPreview(){
-  const qty   = parseFloat(document.getElementById('hv-qty').value)||0;
-  const price = parseFloat(document.getElementById('hv-price').value)||0;
-  const el    = document.getElementById('hv-preview');
-  if(!el) return;
-  if(!qty){ el.style.display='none'; return; }
-  const kgVal = harvestUnit==='ton'?qty*1000:harvestUnit==='count'?qty*0.3:qty;
-  const total = qty * price;
-  el.style.display = 'block';
-  const secKey = document.getElementById('hv-sec').value;
-  const pnl = sectorPnL(secKey);
-  const projRevenue = pnl.revenue + total;
-  const projNet     = projRevenue - pnl.totalCost;
-  const netColor = projNet>0?'var(--profit-color)':projNet<0?'var(--loss-color)':'var(--gold)';
-  const netIcon  = projNet>0?'📈 ربح':projNet<0?'📉 خسارة':'⚖️ تعادل';
-  el.innerHTML = `
-    الكمية: <b style="color:var(--gold)">${qty} ${harvestUnit==='kg'?'كجم':harvestUnit==='ton'?'طن':'قطعة'}</b>
-    ${price>0?`<br>الإيراد: <b style="color:var(--harvest-color)">${fmtCost(total)}</b>`:``}
-    ${price>0&&pnl.totalCost>0?`<br>إجمالي التكاليف على القطاع: <b style="color:var(--feed-cost-color)">${fmtCost(pnl.totalCost)}</b>
-    <br>الصافي المتوقع بعد هذا الإخراج: <b style="color:${netColor}">${netIcon}: ${fmtCost(Math.abs(projNet))}</b>`:``}
-  `;
-}
+// ── HARVEST MODAL LOGIC ──
 function openHarvest(secKey){
   document.getElementById('hv-sec').value = secKey;
   document.getElementById('hv-sec-label').textContent = SECTORS[secKey]?.name || secKey;
-  harvestUnit = 'kg';
-  sHarvestUnit('kg');
-  document.getElementById('hv-qty').value='';
-  document.getElementById('hv-price').value='';
+  document.getElementById('hv-total-price').value='';
   document.getElementById('hv-notes').value='';
-  document.getElementById('hv-preview').style.display='none';
   const today = new Date().toISOString().split('T')[0];
   document.getElementById('hv-date').value = today;
   oModal('mo-harvest');
 }
+
 async function doHarvest(){
   const sector = document.getElementById('hv-sec').value;
   const type   = document.getElementById('hv-type').value;
-  const qty    = parseFloat(document.getElementById('hv-qty').value);
-  const price  = parseFloat(document.getElementById('hv-price').value)||0;
+  const totalRevenue = parseFloat(document.getElementById('hv-total-price').value);
   const date   = document.getElementById('hv-date').value;
   const notes  = document.getElementById('hv-notes').value;
-  if(!qty||qty<=0) return toast('❌ أدخل الكمية','err');
-  if(!date)        return toast('❌ اختر التاريخ','err');
 
-  const kgVal = harvestUnit==='ton'?qty*1000:harvestUnit==='count'?qty*0.3:qty;
-  const totalRevenue = price>0 ? qty*price : 0;
-  const qtyLabel = harvestUnit==='kg'?`${qty} كجم`:harvestUnit==='ton'?`${qty} طن`:`${qty} قطعة`;
+  if(!totalRevenue||totalRevenue<=0) return toast('❌ أدخل إجمالي مبلغ البيع','err');
+  if(!date)        return toast('❌ اختر التاريخ','err');
 
   const lr = window.dbPush(window.dbRef(db,'logs'));
   await window.dbSet(lr,{
     type:'fish_out', fishType:type,
-    qty: kgVal, qtyLabel, qtyRaw: qty, qtyUnit: harvestUnit,
-    pricePerUnit: price>0?price:0,
-    totalRevenue, sector, date, notes, ts:ts()
+    qty: 0, qtyLabel: 'إخراج يدوي بالمبلغ', qtyRaw: 0, qtyUnit: 'manual',
+    pricePerUnit: 0,
+    totalRevenue: totalRevenue, sector, date, notes, ts:ts()
   });
 
   cModal('mo-harvest');
@@ -1305,7 +1223,7 @@ async function doHarvest(){
   const resultMsg = pnl.totalCost>0 && totalRevenue>0
     ? (netAfter>0?` | 📈 ربح: ${fmtCost(netAfter)}`:netAfter<0?` | 📉 خسارة: ${fmtCost(Math.abs(netAfter))}`:'| ⚖️ تعادل')
     : '';
-  toast(`✅ تم إخراج ${qtyLabel} ${type}${totalRevenue>0?' — '+fmtCost(totalRevenue):''}${resultMsg}`,'ok');
+  toast(`✅ تم إخراج ${type} بقيمة ${fmtCost(totalRevenue)}${resultMsg}`,'ok');
 }
 
 // ── FISH COST PREVIEW ──
@@ -1579,7 +1497,6 @@ function renderCostCards(){
   </div>`;
 }
 
-// ── تكلفة العلف لكل قطاع (جديد) ──
 function renderFeedCostCards(){
   const el = document.getElementById('d-feedcosts');
   if(!el) return;
@@ -1626,12 +1543,10 @@ function renderFeedCostCards(){
   </div>`;
 }
 
-// ── ربح/خسارة لكل قطاع ──
 function renderPnLCards(){
   const el = document.getElementById('d-pnl-cards');
   if(!el) return;
 
-  // Check if any sector has revenue or costs
   const hasAny = Object.keys(SECTORS).some(k=>{
     const p = sectorPnL(k);
     return p.revenue>0 || p.totalCost>0;
@@ -1646,18 +1561,15 @@ function renderPnLCards(){
     const p = sectorPnL(k);
     if(p.revenue===0 && p.totalCost===0) return '';
 
-    // Harvest logs for this sector
     const hvLogs = Object.values(state.logs).filter(l=>l&&l.type==='fish_out'&&l.sector===k);
-    const totalKg = hvLogs.reduce((s,l)=>s+(l.qty||0),0);
     const byType={};
     hvLogs.forEach(l=>{
       const t=l.fishType||'غير محدد';
-      if(!byType[t]) byType[t]={kg:0,rev:0};
-      byType[t].kg  += l.qty||0;
+      if(!byType[t]) byType[t]={rev:0};
       byType[t].rev += l.totalRevenue||0;
     });
     const typeTags = Object.entries(byType).map(([t,d])=>
-      `<span style="display:inline-block;margin-left:8px;">${FISH_ICO[t]||'🐟'} ${t}: <b style="color:var(--harvest-color);">${d.kg>=1000?(d.kg/1000).toFixed(2)+' طن':d.kg.toFixed(1)+' كجم'}</b>${d.rev>0?` — ${fmtCost(d.rev)}`:''}
+      `<span style="display:inline-block;margin-left:8px;">${FISH_ICO[t]||'🐟'} ${t}:${d.rev>0?` <b style="color:var(--harvest-color);">${fmtCost(d.rev)}</b>`:''}
       </span>`
     ).join('');
 
@@ -1676,11 +1588,11 @@ function renderPnLCards(){
         </div>
         <div class="harvest-kpi">
           <div class="kv" style="color:var(--feed-cost-color);">${p.totalCost>0?fmtCost(p.totalCost):'—'}</div>
-          <div class="kl">تكلفة سمك + علف</div>
+          <div class="kl">تكلفة القطاع الكلية</div>
         </div>
         <div class="harvest-kpi">
-          <div class="kv" style="color:var(--muted);">${totalKg>=1000?(totalKg/1000).toFixed(2)+' طن':totalKg.toFixed(1)+' كجم'}</div>
-          <div class="kl">كمية المُصرَّف</div>
+          <div class="kv" style="color:var(--muted);">${hvLogs.length} عمليات</div>
+          <div class="kl">مرات الإخراج</div>
         </div>
       </div>
       ${typeTags?`<div style="font-size:10px;color:var(--muted);margin-bottom:7px;line-height:1.8;">${typeTags}</div>`:''}
@@ -1691,7 +1603,6 @@ function renderPnLCards(){
     </div>`;
   }).join('');
 
-  // Farm total PnL
   const totalRev  = totalHarvestRevenue();
   const totalCost = totalFarmCost() + totalFeedCost();
   const totalNet  = totalRev - totalCost;
@@ -1707,28 +1618,45 @@ function renderPnLCards(){
     </div>
   </div>`;
 }
+
 function renderSectors(){
   let html='';
   Object.entries(SECTORS).forEach(([k,sec])=>{
     const data  = state.sectors[k]||{};
     const flist = data.fish ? Object.entries(data.fish) : [];
     const isExp = state.expandedSectors.has(k);
+    
+    // حساب التكاليف والإيرادات للقطاع
     const secCost = sectorTotalCost(k);
     const feedCost = sectorFeedCost(k);
+    const totalSectorCost = secCost + feedCost; // التكلفة الإجمالية للقطاع
     const harvestRev = sectorHarvestRevenue(k);
-    const secNet = harvestRev - (secCost + feedCost);
+    const secNet = harvestRev - totalSectorCost;
+
     html += `<div class="sec-card" id="sc-${k}">
       <div class="sec-hdr" onclick="toggleSec('${k}')">
         <div class="sec-name"><div class="sec-ico" style="background:linear-gradient(135deg,${sec.color}22,${sec.color}11);">${sec.icon}</div>${sec.name}</div>
         <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:flex-end;">
-          ${secCost>0?`<span style="font-size:10px;font-weight:700;color:var(--cost-color);background:var(--cost-bg);border:1px solid var(--cost-border);border-radius:8px;padding:1px 6px;">🐟 ${fmtCost(secCost)}</span>`:''}
-          ${feedCost>0?`<span style="font-size:10px;font-weight:700;color:var(--feed-cost-color);background:var(--feed-cost-bg);border:1px solid var(--feed-cost-border);border-radius:8px;padding:1px 6px;">🌿 ${fmtCost(feedCost)}</span>`:''}
-          ${harvestRev>0?`<span style="font-size:10px;font-weight:700;color:var(--harvest-color);background:var(--harvest-bg);border:1px solid var(--harvest-border);border-radius:8px;padding:1px 6px;">💰 ${fmtCost(harvestRev)}</span>`:''}
-          ${(harvestRev>0||(secCost+feedCost)>0)&&harvestRev>0?`<span style="font-size:10px;font-weight:800;color:${secNet>=0?'var(--profit-color)':'var(--loss-color)'};background:${secNet>=0?'var(--profit-bg)':'var(--loss-bg)'};border:1px solid ${secNet>=0?'var(--profit-border)':'var(--loss-border)'};border-radius:8px;padding:1px 6px;">${secNet>=0?'📈':'📉'} ${fmtCost(Math.abs(secNet))}</span>`:''}
           <div class="sec-badge">${flist.length} نوع</div>
           <span style="color:var(--muted);font-size:16px;">${isExp?'▲':'▼'}</span>
         </div>
       </div>
+
+      <div style="background:rgba(0,0,0,.2); border-radius:9px; padding:10px 15px; margin-top:10px; display:flex; justify-content:space-between; align-items:center;">
+         <div style="text-align:center;">
+            <div style="font-size:10px; color:var(--muted); margin-bottom:3px;">🐟 إجمالي السمك</div>
+            <div style="font-size:13px; font-weight:800; color:var(--cost-color);">${fmtCost(secCost)}</div>
+         </div>
+         <div style="text-align:center;">
+            <div style="font-size:10px; color:var(--muted); margin-bottom:3px;">🌿 إجمالي العلف</div>
+            <div style="font-size:13px; font-weight:800; color:var(--feed-cost-color);">${fmtCost(feedCost)}</div>
+         </div>
+         <div style="text-align:center; border-right:1px solid rgba(255,255,255,0.1); padding-right:15px;">
+            <div style="font-size:10px; color:var(--cyan); margin-bottom:3px;">💵 القطاع كلفني</div>
+            <div style="font-size:14px; font-weight:900; color:var(--cyan);">${fmtCost(totalSectorCost)}</div>
+         </div>
+      </div>
+
       <div class="sec-exp ${isExp?'open':''}" id="se-${k}">
         <div class="fish-list">
           ${flist.length===0
@@ -1843,8 +1771,7 @@ function logHTML(log, withAct){
     detail=`الكمية: <b style="color:var(--gold)">${log.qtyLabel||'—'}</b> (${(log.qty||0).toLocaleString('ar-EG')} كجم)`;
   } else if(log.type==='fish_out'){
     title=`🐠 تصريف/بيع ${log.fishType||'سمك'} ← ${sname}`;
-    detail=`الكمية: <b style="color:var(--harvest-color)">${log.qtyLabel||'—'}</b>`;
-    if(log.pricePerUnit>0) detail+=` | السعر: <b style="color:var(--gold)">${log.pricePerUnit.toLocaleString('ar-EG')} ج.م/${log.qtyUnit==='kg'?'كجم':log.qtyUnit==='ton'?'طن':'قطعة'}</b>`;
+    detail=`<b style="color:var(--harvest-color)">${log.qtyLabel||'—'}</b>`;
     if(log.totalRevenue>0) detail+=` | <b style="color:var(--harvest-color);">الإيراد: ${fmtCost(log.totalRevenue)}</b>`;
     // Show PnL snapshot
     const p = sectorPnL(log.sector||'');
