@@ -669,6 +669,7 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
           <div class="price-calc-box" id="fi-cost-preview" style="display:none;"></div>
         </div>
         <div class="fg"><label class="fl">تاريخ الإضافة</label><input class="fc" type="date" id="fi-date"></div>
+        <div class="fg"><label class="fl">📝 ملاحظات / تفاصيل <span style="font-size:10px;color:var(--muted);">(اختياري)</span></label><textarea class="fc" id="fi-notes" placeholder="أدخل أي ملاحظات أو تفاصيل..." rows="2" style="resize:vertical;min-height:48px;"></textarea></div>
         <button class="btn btn-green" onclick="doAddFish()">🐟 إضافة أسماك</button>
       </div>
     </div>
@@ -727,6 +728,7 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
       </div>
     </div>
     <div class="fg"><label class="fl">التاريخ</label><input class="fc" type="date" id="ef-date"></div>
+    <div class="fg"><label class="fl">📝 ملاحظات / تفاصيل <span style="font-size:10px;color:var(--muted);">(اختياري)</span></label><textarea class="fc" id="ef-notes" placeholder="أدخل أي ملاحظات أو تفاصيل..." rows="2" style="resize:vertical;min-height:48px;"></textarea></div>
     <div style="display:flex;gap:9px;">
       <button class="btn btn-green" onclick="saveEditFish()">💾 حفظ</button>
       <button class="btn btn-danger" onclick="cModal('mo-fish')">✕ إلغاء</button>
@@ -1296,6 +1298,7 @@ function renderSectors(){
                     <div class="fi-name">${f.type}</div>
                     ${f.price>0?`<div class="fi-price">💰 ${f.price.toLocaleString('ar-EG')} ج.م / ${f.unit==='count'?'قطعة':f.unit==='kg'?'كجم':'طن'}</div>`:''}
                     <div class="fi-date">${fmtDate(f.date)}</div>
+                    ${f.notes?`<div style="font-size:10px;color:var(--muted);margin-top:3px;">📝 ${f.notes}</div>`:''}
                   </div>
                 </div>
                 <div style="display:flex;align-items:center;gap:5px;">
@@ -1380,6 +1383,7 @@ function logHTML(log, withAct){
   } else if(log.type==='fish_in'){
     title=`إضافة ${log.fishType} ← ${sname}`; detail=`الكمية: <b style="color:var(--gold)">${log.fishDisplay||'—'}</b>`;
     if(log.totalCost>0) detail+=` | التكلفة: <b style="color:var(--cost-color);">${fmtCost(log.totalCost)}</b>`;
+    if(log.notes) detail+=` | 📝 <span style="color:var(--muted);">${log.notes}</span>`;
   } else if(log.type==='store_in'){
     title=`استلام علف ${log.feedType}% ${log.float==='float'?'🌊 عايم':'⬇️ غاطس'} → المخزن`;
     detail=`الكمية المُضافة: <b style="color:var(--cyan)">${log.qtyLabel||'—'}</b>`;
@@ -1483,12 +1487,15 @@ async function doAddFish(){
   const value  = parseFloat(document.getElementById('fi-val').value); const unit   = state.fishUnit;
   const date   = document.getElementById('fi-date').value; const price  = parseFloat(document.getElementById('fi-price').value)||0;
   if(!value||value<=0) return toast('❌ أدخل كمية صحيحة','err'); if(!date) return toast('❌ اختر التاريخ','err');
-  const fishData = {type, value, unit, date, ts:ts()}; if(price>0) fishData.price = price;
+  const notes = document.getElementById('fi-notes').value.trim();
+  const fishData = {type, value, unit, date, ts:ts()}; if(price>0) fishData.price = price; if(notes) fishData.notes = notes;
   const fishRef = window.dbPush(window.dbRef(db,`sectors/${sector}/fish`)); await window.dbSet(fishRef, fishData);
   const totalCost = price>0 ? value*price : 0;
+  const logData = { type:'fish_in', fishType:type, fishDisplay: fmtFish({value,unit}), qty: fishKg({value,unit}), totalCost: totalCost, sector, date, ts:ts() };
+  if(notes) logData.notes = notes;
   const lr = window.dbPush(window.dbRef(db,'logs'));
-  await window.dbSet(lr,{ type:'fish_in', fishType:type, fishDisplay: fmtFish({value,unit}), qty: fishKg({value,unit}), totalCost: totalCost, sector, date, ts:ts() });
-  document.getElementById('fi-val').value=''; document.getElementById('fi-price').value=''; document.getElementById('fi-cost-preview').style.display='none';
+  await window.dbSet(lr, logData);
+  document.getElementById('fi-val').value=''; document.getElementById('fi-price').value=''; document.getElementById('fi-notes').value=''; document.getElementById('fi-cost-preview').style.display='none';
   toast(`✅ تم إضافة ${fmtFish({value,unit})} ${type}${totalCost>0?' — '+fmtCost(totalCost):''}`,'ok');
 }
 
@@ -1504,14 +1511,16 @@ function openEditFish(sec,fid){
   const f=state.sectors[sec]?.fish?.[fid]; if(!f) return;
   document.getElementById('ef-id').value=fid; document.getElementById('ef-sec').value=sec; document.getElementById('ef-type').value=f.type;
   document.getElementById('ef-val').value=f.value; document.getElementById('ef-unit').value=f.unit||'kg'; document.getElementById('ef-price').value=f.price||''; document.getElementById('ef-date').value=f.date||'';
+  document.getElementById('ef-notes').value=f.notes||'';
   oModal('mo-fish');
 }
 async function saveEditFish(){
   const sec=document.getElementById('ef-sec').value; const fid=document.getElementById('ef-id').value;
   const v=parseFloat(document.getElementById('ef-val').value); const price=parseFloat(document.getElementById('ef-price').value)||0;
   if(!v||v<=0) return toast('❌ قيمة غير صحيحة','err');
-  const upd={ type:document.getElementById('ef-type').value, value:v, unit:document.getElementById('ef-unit').value, date:document.getElementById('ef-date').value, };
-  if(price>0) upd.price=price;
+  const efNotes = document.getElementById('ef-notes').value.trim();
+  const upd={ type:document.getElementById('ef-type').value, value:v, unit:document.getElementById('ef-unit').value, date:document.getElementById('ef-date').value, notes: efNotes||null };
+  if(price>0) upd.price=price; else upd.price=null;
   await window.dbUpdate(window.dbRef(db,`sectors/${sec}/fish/${fid}`), upd);
   cModal('mo-fish'); toast('✅ تم التعديل','ok');
 }
