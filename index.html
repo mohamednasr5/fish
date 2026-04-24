@@ -199,7 +199,7 @@ html,body{height:100%;background:var(--deep);color:var(--text);font-family:'Cair
 .viewer-badge.show{display:flex;align-items:center;gap:5px;}
 
 /* ══════════════════════════════════════
-   MAIN APP (unchanged base styles)
+   MAIN APP
 ══════════════════════════════════════ */
 body::before{content:'';position:fixed;inset:0;background:
   radial-gradient(ellipse 80% 50% at 20% 10%,rgba(0,180,216,.12) 0%,transparent 60%),
@@ -603,11 +603,10 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
       <div class="pg-ttl">🍽️ إخراج علف للقطاع</div>
       <div class="card">
         <div class="card-ttl">📤 بيانات الإخراج</div>
+        <!-- ✅ القطاعات المحدّثة في select إخراج علف -->
         <div class="fg"><label class="fl">القطاع</label>
-          <select class="fc" id="f-sec">
-            <option value="sector1">القطاع الأول</option><option value="sector2">القطاع الثاني</option>
-            <option value="sector3">القطاع الثالث</option><option value="sarf">الصرف</option><option value="maghzy">المغزى</option>
-          </select></div>
+          <select class="fc" id="f-sec" id="f-sec"></select>
+        </div>
         <div class="fg"><label class="fl">نوع العلف</label>
           <select class="fc" id="f-ftype" onchange="fStockInfo();calcFeedCostPreview();">
             <option value="30">علف 30%</option><option value="18">علف 18%</option><option value="25">علف 25%</option>
@@ -642,11 +641,10 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
 
       <div class="card">
         <div class="card-ttl">🐠 إضافة أسماك لقطاع</div>
+        <!-- ✅ القطاعات المحدّثة في select إضافة سمك -->
         <div class="fg"><label class="fl">القطاع</label>
-          <select class="fc" id="fi-sec">
-            <option value="sector1">القطاع الأول</option><option value="sector2">القطاع الثاني</option>
-            <option value="sector3">القطاع الثالث</option><option value="sarf">الصرف</option><option value="maghzy">المغزى</option>
-          </select></div>
+          <select class="fc" id="fi-sec"></select>
+        </div>
         <div class="fg"><label class="fl">نوع السمك</label>
           <select class="fc" id="fi-type">
             <option value="بوري">🐟 بوري</option><option value="طوبار">🐠 طوبار</option>
@@ -690,21 +688,15 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
           <option value="fish_out">🐠 بيع / تصريف سمك</option>
           <option value="store_in">استلام علف</option>
         </select>
-        <select class="fc" id="lg-sec" onchange="renderLogs()" style="flex:1;">
-          <option value="all">كل القطاعات</option>
-          <option value="sector1">القطاع الأول</option>
-          <option value="sector2">القطاع الثاني</option>
-          <option value="sector3">القطاع الثالث</option>
-          <option value="sarf">الصرف</option>
-          <option value="maghzy">المغزى</option>
-          <option value="store">المخزن</option>
-        </select>
+        <!-- ✅ فلتر القطاعات المحدّث في السجل -->
+        <select class="fc" id="lg-sec" onchange="renderLogs()" style="flex:1;"></select>
       </div>
       <div id="logsEl"><div class="loading"><div class="spin"></div> تحميل...</div></div>
     </div>
   </main>
 </div>
 
+<!-- Modals -->
 <div class="mo" id="mo-fish" onclick="cModal('mo-fish',event)">
   <div class="mo-box">
     <div class="mo-hdl"></div>
@@ -745,11 +737,10 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
       <select class="fc" id="efl-ftype">
         <option value="30">علف 30%</option><option value="18">علف 18%</option><option value="25">علف 25%</option>
       </select></div>
+    <!-- ✅ القطاعات المحدّثة في modal تعديل سجل الإخراج -->
     <div class="fg"><label class="fl">القطاع</label>
-      <select class="fc" id="efl-sec">
-        <option value="sector1">القطاع الأول</option><option value="sector2">القطاع الثاني</option>
-        <option value="sector3">القطاع الثالث</option><option value="sarf">الصرف</option><option value="maghzy">المغزى</option>
-      </select></div>
+      <select class="fc" id="efl-sec"></select>
+    </div>
     <div class="ibox warn" style="margin-bottom:12px;">⚠️ تعديل السجل لا يُعيد حساب رصيد المخزن تلقائياً — عدّل المخزن يدوياً إن لزم</div>
     <div class="fg"><label class="fl">الكمية المُخرجة (كجم)</label><input class="fc" type="number" id="efl-qty" min="0" step="0.001"></div>
     <div class="fg"><label class="fl">التاريخ</label><input class="fc" type="date" id="efl-date"></div>
@@ -772,7 +763,7 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
     <div class="fg"><label class="fl">طن (كامل)</label><input class="fc" type="number" id="es-ton" min="0" step="0.001"></div>
     <div class="ibox" id="es-preview" style="margin-bottom:12px;"></div>
     <div style="display:flex;gap:9px;">
-      <button class="btn btn-gold" onclick="saveEditStore()">💾 تحديث הרصيد</button>
+      <button class="btn btn-gold" onclick="saveEditStore()">💾 تحديث الرصيد</button>
       <button class="btn btn-danger" onclick="cModal('mo-store')">✕ إلغاء</button>
     </div>
   </div>
@@ -832,6 +823,42 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
 <div class="toast" id="toast"></div>
 
 <script>
+// ══════════════════════════════════════════════════════════════════
+// ✅ تعريف مركزي للقطاعات — كل التعديلات هنا فقط
+// ══════════════════════════════════════════════════════════════════
+const SECTORS = {
+  sector1:    { name:'القطاع الأول',          icon:'1️⃣', color:'#00b4d8' },
+  sector2:    { name:'القطاع الثاني',         icon:'2️⃣', color:'#06d6a0' },
+  sector3:    { name:'القطاع الثالث',         icon:'3️⃣', color:'#ffd166' },
+  sarf_west:  { name:'الصرف الوسطاني',        icon:'🔄', color:'#f4a261' },
+  sarf_rail:  { name:'الصرف سكة القطار',      icon:'🚂', color:'#f28b30' },
+  sarf_canal: { name:'الصرف القنالي',         icon:'🌊', color:'#48cae4' },
+  maghzy:     { name:'المغزي',                icon:'🌿', color:'#90be6d' },
+};
+
+// دالة مساعدة لملء أي select بالقطاعات
+function buildSectorOptions(selectId, includeStore = false) {
+  const el = document.getElementById(selectId);
+  if (!el) return;
+  let html = '';
+  if (includeStore) {
+    html += '<option value="all">كل القطاعات</option>';
+    Object.entries(SECTORS).forEach(([k, s]) => {
+      html += `<option value="${k}">${s.icon} ${s.name}</option>`;
+    });
+    html += '<option value="store">المخزن</option>';
+  } else {
+    Object.entries(SECTORS).forEach(([k, s]) => {
+      html += `<option value="${k}">${s.icon} ${s.name}</option>`;
+    });
+  }
+  el.innerHTML = html;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// باقي الكود — بدون أي تعديل على المنطق البرمجي
+// ══════════════════════════════════════════════════════════════════
+
 const PASSWORDS = {
   '66666': { role:'admin',  name:'الأستاذ باسل الحديدي',  greeting:'مرحباً', badge:'👑 مدير كامل' },
   '123456':{ role:'viewer', name:'الأستاذ باهي أحمد الحديدي', greeting:'مرحباً', badge:'👁️ عرض فقط' }
@@ -898,13 +925,6 @@ function doLogout(){
   Object.assign(state,{sectors:{},store:{},logs:{}});
 }
 
-const SECTORS = {
-  sector1:{name:'القطاع الأول', icon:'1️⃣', color:'#00b4d8'},
-  sector2:{name:'القطاع الثاني',icon:'2️⃣', color:'#06d6a0'},
-  sector3:{name:'القطاع الثالث',icon:'3️⃣', color:'#ffd166'},
-  sarf:   {name:'الصرف',        icon:'🔄', color:'#f4a261'},
-  maghzy: {name:'المغزى',       icon:'🌿', color:'#90be6d'},
-};
 const FISH_ICO = {بوري:'🐟',طوبار:'🐠',شبار:'🐡',بياض:'🫧'};
 const FC  = {'30':'var(--cyan)','18':'var(--green)','25':'var(--gold)'};
 const B25 = 25, B50 = 50, TON = 1000;
@@ -930,7 +950,6 @@ function subtractStock(stock, unit, val){
   if(unit==='ton')   s.ton  = (s.ton||0)  - val;
   return s;
 }
-// NEW: modified to use Math.max to prevent negative store
 function addStockDelta(stock, unit, val){
   const s = {...stock};
   if(unit==='bag25') s.b25 = Math.max(0, (s.b25||0) + val);
@@ -1067,6 +1086,13 @@ setTimeout(()=>{ if(!window.firebaseReady) window.firebaseReady=false; }, 3000);
 function init(){
   const today = new Date().toISOString().split('T')[0];
   ['s-date','f-date','fi-date'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=today; });
+
+  // ✅ ملء كل القوائم المنسدلة للقطاعات ديناميكياً
+  buildSectorOptions('f-sec');
+  buildSectorOptions('fi-sec');
+  buildSectorOptions('efl-sec');
+  buildSectorOptions('lg-sec', true); // فلتر السجل يحتوي "الكل" + "المخزن"
+
   if(!window.db){ return; }
   window.dbOnValue(window.dbRef(db,'sectors'), snap=>{ state.sectors=snap.val()||{}; renderSectors(); renderDashboard(); });
   window.dbOnValue(window.dbRef(db,'store'),   snap=>{ state.store=snap.val()||{};   renderStore();   renderDashboard(); fStockInfo(); });
@@ -1174,6 +1200,7 @@ function renderDashboard(){
 
   renderCostCards(); renderFeedCostCards(); renderPnLCards();
 
+  // ✅ يستخدم SECTORS مباشرة
   document.getElementById('d-sectors').innerHTML = Object.entries(SECTORS).map(([k,sec])=>{
     const fl = (state.sectors[k]?.fish) ? Object.values(state.sectors[k].fish) : []; const kg = fl.reduce((s,f)=>s+fishKg(f),0);
     return `<div class="sec-card" onclick="showPage('sectors')" style="cursor:pointer;margin-bottom:9px;">
@@ -1252,11 +1279,9 @@ function renderSectors(){
     const data  = state.sectors[k]||{};
     const flist = data.fish ? Object.entries(data.fish) : [];
     const isExp = state.expandedSectors.has(k);
-    
-    // حساب التكاليف والإيرادات للقطاع
     const secCost = sectorTotalCost(k);
     const feedCost = sectorFeedCost(k);
-    const totalSectorCost = secCost + feedCost; // التكلفة الإجمالية للقطاع
+    const totalSectorCost = secCost + feedCost;
     const harvestRev = sectorHarvestRevenue(k);
     const secNet = harvestRev - totalSectorCost;
 
@@ -1405,7 +1430,6 @@ function logHTML(log, withAct){
       acts += `<button class="b-edit btn-sm" onclick="openEditStoreLog('${log.id}')">✏️ تعديل</button>`;
       acts += `<button class="b-del btn-sm" onclick="delStoreLog('${log.id}')">🗑️ تراجع (مسح)</button>`;
     }
-    // Delete for other types
     if(log.type !== 'store_in' || !log.rawVal) {
       acts += `<button class="b-del btn-sm" onclick="delLog('${log.id}')">🗑️ حذف</button>`;
     }
@@ -1439,15 +1463,12 @@ async function doAddStore(){
   const newStock= { b25:(current.b25||0)+(delta.b25||0), b50:(current.b50||0)+(delta.b50||0), ton:(current.ton||0)+(delta.ton||0) };
   await window.dbSet(window.dbRef(db,`store/${key}`), newStock);
   const lr = window.dbPush(window.dbRef(db,'logs'));
-  
-  // NEW: Save rawVal and unit for accurate editing later
   await window.dbSet(lr,{ 
     type:'store_in', feedType:type, float, qty:kg, 
     qtyLabel:fmtStockEntry(val,state.storeUnit), 
     rawVal: val, unit: state.storeUnit,
     date, ts:ts() 
   });
-  
   document.getElementById('s-qty').value='';
   document.getElementById('s-calc').style.display='none';
   toast(`✅ تم إضافة ${fmtStockEntry(val, state.storeUnit)} علف ${type}%`,'ok');
@@ -1539,7 +1560,6 @@ async function saveEditFeedLog(){
   cModal('mo-flog'); toast('✅ تم تعديل السجل','ok');
 }
 
-// ── NEW: EDIT STORE LOGS ──
 function openEditStoreLog(lid) {
   const l = state.logs[lid];
   if(!l || !l.rawVal) return toast('لا يمكن تعديل السجلات القديمة تلقائياً، استخدم تعديل الرصيد اليدوي أعلى الصفحة','err');
@@ -1558,9 +1578,8 @@ async function saveEditStoreLog() {
   if(!newVal || newVal <= 0) return toast('❌ كمية غير صحيحة','err');
 
   const l = state.logs[lid];
-  const diff = newVal - l.rawVal; // الفرق بين الكمية الجديدة والكمية اللي دخلت بالخطأ
+  const diff = newVal - l.rawVal;
 
-  // تحديث المخزن إذا كان فيه فرق
   if(diff !== 0) {
     const key = sk(l.feedType, l.float);
     const current = getStock(l.feedType, l.float);
@@ -1568,7 +1587,6 @@ async function saveEditStoreLog() {
     await window.dbUpdate(window.dbRef(db, `store/${key}`), newStock);
   }
 
-  // تحديث السجل نفسه
   const newKg = stockToKg(unitToStock(newVal, l.unit));
   await window.dbUpdate(window.dbRef(db, `logs/${lid}`), {
     rawVal: newVal,
@@ -1587,7 +1605,7 @@ async function delStoreLog(lid) {
   if(l.rawVal) {
     const key = sk(l.feedType, l.float);
     const current = getStock(l.feedType, l.float);
-    const newStock = addStockDelta(current, l.unit, -l.rawVal); // إضافة بالسالب لخصمها
+    const newStock = addStockDelta(current, l.unit, -l.rawVal);
     await window.dbUpdate(window.dbRef(db, `store/${key}`), newStock);
   }
   await window.dbRemove(window.dbRef(db, `logs/${lid}`));
@@ -1630,7 +1648,7 @@ function toast(msg,type=''){
 function setupPWA(){
   const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
   const isSA=window.matchMedia('(display-mode:standalone)').matches||window.navigator.standalone;
-  if(isIOS&&!isSA) setTimeout(()=>document.getElementById('ios-banner').style.display='block',2000);
+  if(isIOS&&!isSA) setTimeout(()=>document.getElementById('ios-banner')?.style && (document.getElementById('ios-banner').style.display='block'),2000);
   window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); deferredPrompt=e; document.getElementById('installBtn').classList.remove('hidden'); });
   window.addEventListener('appinstalled',()=>{ document.getElementById('installBtn').classList.add('hidden'); toast('🎉 تم التثبيت!','ok'); });
 }
