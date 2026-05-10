@@ -560,6 +560,10 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
 
     <div class="pg" id="pg-sectors">
       <div class="pg-ttl">🌊 إدارة القطاعات</div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+                    <button class="btn btn-gold" style="width:auto;padding:10px 14px;" onclick="exportAllData()">⬇️ تنزيل تقرير المزرعة الشامل (Excel)</button>
+                    <button class="btn btn-danger" style="width:auto;padding:10px 14px;" onclick="resetAllProgramData()">🗑️ تصفير كامل البرنامج</button>
+                </div>
       <div id="sectorsEl"><div class="loading"><div class="spin"></div> تحميل...</div></div>
     </div>
 
@@ -603,9 +607,8 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
       <div class="pg-ttl">🍽️ إخراج علف للقطاع</div>
       <div class="card">
         <div class="card-ttl">📤 بيانات الإخراج</div>
-        <!-- ✅ القطاعات المحدّثة في select إخراج علف -->
         <div class="fg"><label class="fl">القطاع</label>
-          <select class="fc" id="f-sec" id="f-sec"></select>
+          <select class="fc" id="f-sec"></select>
         </div>
         <div class="fg"><label class="fl">نوع العلف</label>
           <select class="fc" id="f-ftype" onchange="fStockInfo();calcFeedCostPreview();">
@@ -641,7 +644,6 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
 
       <div class="card">
         <div class="card-ttl">🐠 إضافة أسماك لقطاع</div>
-        <!-- ✅ القطاعات المحدّثة في select إضافة سمك -->
         <div class="fg"><label class="fl">القطاع</label>
           <select class="fc" id="fi-sec"></select>
         </div>
@@ -688,7 +690,6 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
           <option value="fish_out">🐠 بيع / تصريف سمك</option>
           <option value="store_in">استلام علف</option>
         </select>
-        <!-- ✅ فلتر القطاعات المحدّث في السجل -->
         <select class="fc" id="lg-sec" onchange="renderLogs()" style="flex:1;"></select>
       </div>
       <div id="logsEl"><div class="loading"><div class="spin"></div> تحميل...</div></div>
@@ -696,7 +697,6 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
   </main>
 </div>
 
-<!-- Modals -->
 <div class="mo" id="mo-fish" onclick="cModal('mo-fish',event)">
   <div class="mo-box">
     <div class="mo-hdl"></div>
@@ -737,7 +737,6 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
       <select class="fc" id="efl-ftype">
         <option value="30">علف 30%</option><option value="18">علف 18%</option><option value="25">علف 25%</option>
       </select></div>
-    <!-- ✅ القطاعات المحدّثة في modal تعديل سجل الإخراج -->
     <div class="fg"><label class="fl">القطاع</label>
       <select class="fc" id="efl-sec"></select>
     </div>
@@ -1339,6 +1338,10 @@ function renderSectors(){
         </div>
         <button class="btn btn-green" style="margin-top:10px;" onclick="quickFish('${k}')">➕ إضافة سمك</button>
         <button class="btn btn-harvest" style="margin-top:7px;" onclick="openHarvest('${k}')">🐠 إخراج سمك كبير</button>
+        <div style="display:flex; gap:7px; margin-top:7px;">
+          <button class="btn btn-gold" style="flex:1;" onclick="exportSectorData('${k}')">⬇️ تصدير القطاع (Excel)</button>
+          <button class="btn btn-danger" style="flex:1;" onclick="resetSectorData('${k}')">🗑️ تصفير القطاع</button>
+        </div>
       </div>
       <div class="water"><svg viewBox="0 0 200 20" preserveAspectRatio="none"><path d="M0,10 C50,0 100,20 150,10 C175,5 190,15 200,10 L200,20 L0,20Z" fill="${sec.color}"/></svg></div>
     </div>`;
@@ -1654,6 +1657,260 @@ function setupPWA(){
 }
 function installApp(){ if(!deferredPrompt) return; deferredPrompt.prompt(); deferredPrompt.userChoice.then(()=>{ deferredPrompt=null; }); }
 if('serviceWorker'in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+
+// ══════════════════════════════════════════════════════════════════
+// ✅ دوال التصدير المنسقة بصيغة Excel (الشاملة + القطاعات)
+// ══════════════════════════════════════════════════════════════════
+
+// 1. مولد هيكل الـ Excel كـ HTML مع التنسيقات والألوان
+function createExcelHTML(content) {
+  return `
+  <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+  <head>
+  <meta charset="utf-8">
+  <style>
+    body { direction: rtl; font-family: 'Cairo', Tahoma, Arial, sans-serif; background-color: #ffffff; }
+    table { border-collapse: collapse; width: 100%; margin-bottom: 30px; }
+    th, td { border: 1px solid #000000; padding: 10px; text-align: center; font-size: 14px; }
+    th { background-color: #071e35; color: #ffffff; font-weight: bold; font-size: 15px; }
+    .hdr { background-color: #00b4d8; color: #ffffff; }
+    .sub-hdr { background-color: #e8f4fd; color: #071e35; font-weight: bold; }
+    .profit { color: #0a8a6e; font-weight: bold; }
+    .loss { color: #b91c1c; font-weight: bold; }
+    h2 { text-align: center; color: #071e35; border-bottom: 2px solid #00b4d8; padding-bottom: 10px; }
+  </style>
+  </head>
+  <body>
+    ${content}
+  </body>
+  </html>`;
+}
+
+// 2. دالة تنزيل الملف
+function downloadExcelBlob(html, filename) {
+  // نضيف BOM \uFEFF لتتعرف برامج Office على ترميز UTF-8
+  const blob = new Blob(['\uFEFF' + html], { type: 'application/vnd.ms-excel;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename + '.xls';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+// 3. تصدير كامل المزرعة (منسق)
+function exportAllData() {
+  // حسابات إحصائيات المزرعة
+  const totalFish = Object.values(state.sectors).reduce((s,sec)=>{ if(sec&&sec.fish) Object.values(sec.fish).forEach(f=>s+=fishKg(f)); return s; },0);
+  const totalFeed = Object.values(state.store).reduce((s,v)=>s+stockToKg(v),0);
+  const farmCost  = totalFarmCost();
+  const feedCost  = totalFeedCost();
+  const harvestRev= totalHarvestRevenue();
+  const totalCostAll = farmCost + feedCost;
+  const netPnL    = harvestRev - totalCostAll;
+
+  // قسم 1: إحصائيات المزرعة الرئيسية
+  let content = `<h2>📊 إحصائيات المزرعة الرئيسية</h2>
+  <table>
+    <tr>
+      <th class="hdr">إجمالي الأسماك</th>
+      <th class="hdr">إجمالي العلف</th>
+      <th class="hdr">تكلفة الأسماك</th>
+      <th class="hdr">تكلفة العلف</th>
+      <th class="hdr">إيرادات البيع</th>
+      <th class="hdr">صافي الربح / الخسارة</th>
+    </tr>
+    <tr>
+      <td>${totalFish >= 1000 ? (totalFish/1000).toFixed(2) + ' طن' : totalFish.toFixed(0) + ' كجم'}</td>
+      <td>${totalFeed >= 1000 ? (totalFeed/1000).toFixed(2) + ' طن' : totalFeed.toFixed(0) + ' كجم'}</td>
+      <td>${farmCost.toLocaleString('ar-EG')} ج.م</td>
+      <td>${feedCost.toLocaleString('ar-EG')} ج.م</td>
+      <td>${harvestRev.toLocaleString('ar-EG')} ج.م</td>
+      <td class="${netPnL > 0 ? 'profit' : netPnL < 0 ? 'loss' : ''}" dir="ltr">${netPnL > 0 ? '+' : ''}${netPnL.toLocaleString('ar-EG')} ج.م</td>
+    </tr>
+  </table>`;
+
+  // قسم 2: المكسب والخسارة لكل قطاع
+  content += `<h2>📈 المكسب والخسارة لكل قطاع</h2>
+  <table>
+    <tr>
+      <th class="hdr">القطاع</th>
+      <th class="hdr">تكلفة الأسماك</th>
+      <th class="hdr">تكلفة العلف</th>
+      <th class="hdr">التكلفة الكلية للقطاع</th>
+      <th class="hdr">إيرادات المبيعات</th>
+      <th class="hdr">صافي القطاع</th>
+    </tr>`;
+  Object.entries(SECTORS).forEach(([k, sec]) => {
+    const p = sectorPnL(k);
+    if(p.revenue === 0 && p.totalCost === 0) return;
+    content += `<tr>
+      <td class="sub-hdr">${sec.name}</td>
+      <td>${p.fishCost.toLocaleString('ar-EG')} ج.م</td>
+      <td>${p.feedCost.toLocaleString('ar-EG')} ج.م</td>
+      <td>${p.totalCost.toLocaleString('ar-EG')} ج.م</td>
+      <td>${p.revenue.toLocaleString('ar-EG')} ج.م</td>
+      <td class="${p.net > 0 ? 'profit' : p.net < 0 ? 'loss' : ''}" dir="ltr">${p.net > 0 ? '+' : ''}${p.net.toLocaleString('ar-EG')} ج.م</td>
+    </tr>`;
+  });
+  content += `</table>`;
+
+  // قسم 3: بيانات الأسماك
+  content += `<h2>🐟 بيانات الأسماك الحالية بالقطاعات</h2>
+  <table>
+    <tr>
+      <th class="hdr">القطاع</th><th class="hdr">النوع</th><th class="hdr">الكمية</th>
+      <th class="hdr">الوحدة</th><th class="hdr">سعر الشراء</th><th class="hdr">الإجمالي</th>
+      <th class="hdr">التاريخ</th><th class="hdr">ملاحظات</th>
+    </tr>`;
+  Object.entries(SECTORS).forEach(([k, sec]) => {
+    const fishData = state.sectors[k]?.fish || {};
+    Object.values(fishData).forEach(f => {
+      let cost = (f.value || 0) * (f.price || 0);
+      content += `<tr>
+        <td>${sec.name}</td><td>${f.type}</td><td>${f.value}</td>
+        <td>${f.unit === 'count' ? 'قطعة' : f.unit === 'kg' ? 'كجم' : 'طن'}</td>
+        <td>${f.price ? f.price.toLocaleString('ar-EG') + ' ج.م' : '-'}</td>
+        <td>${cost > 0 ? cost.toLocaleString('ar-EG') + ' ج.م' : '-'}</td>
+        <td>${fmtDate(f.date)}</td><td>${f.notes || ''}</td>
+      </tr>`;
+    });
+  });
+  content += `</table>`;
+
+  // قسم 4: المخزن
+  content += `<h2>🏭 رصيد المخزن الحالي</h2>
+  <table>
+    <tr>
+      <th class="hdr">نوع العلف</th><th class="hdr">الطفو</th><th class="hdr">شيكارة 25</th>
+      <th class="hdr">شيكارة 50</th><th class="hdr">طن</th><th class="hdr">إجمالي (كجم)</th>
+    </tr>`;
+  ['30','18','25'].forEach(t => {
+    const fS = getStock(t,'float'), sS = getStock(t,'sink');
+    content += `<tr><td rowspan="2" class="sub-hdr">علف ${t}%</td><td>🌊 عايم</td><td>${fS.b25||0}</td><td>${fS.b50||0}</td><td>${fS.ton||0}</td><td>${stockToKg(fS).toLocaleString('ar-EG')}</td></tr>`;
+    content += `<tr><td>⬇️ غاطس</td><td>${sS.b25||0}</td><td>${sS.b50||0}</td><td>${sS.ton||0}</td><td>${stockToKg(sS).toLocaleString('ar-EG')}</td></tr>`;
+  });
+  content += `</table>`;
+
+  // قسم 5: سجل العمليات
+  content += `<h2>📋 سجل العمليات الكامل</h2>
+  <table>
+    <tr>
+      <th class="hdr">العملية</th><th class="hdr">القطاع / الوجهة</th><th class="hdr">التفاصيل</th>
+      <th class="hdr">التأثير المالي</th><th class="hdr">التاريخ</th><th class="hdr">ملاحظات</th>
+    </tr>`;
+  Object.values(state.logs).sort((a,b)=>(b.ts || 0)-(a.ts || 0)).forEach(l => {
+    let secName = SECTORS[l.sector]?.name || l.sector || 'المخزن';
+    let typeName = l.type === 'feed_out' ? '🍽️ إخراج علف' : l.type === 'fish_in' ? '🐟 إضافة سمك' : l.type === 'fish_out' ? '🐠 بيع سمك' : l.type === 'store_in' ? '📦 إضافة للمخزن' : 'أخرى';
+    let details = l.type === 'feed_out' ? `علف ${l.feedType}% - ${l.qtyLabel}` : l.type === 'store_in' ? `علف ${l.feedType}% - ${l.qtyLabel}` : l.type === 'fish_out' ? `${l.fishType} - ${l.qtyLabel || 'إخراج يدوي'}` : l.fishType || '';
+    let money = l.type === 'feed_out' ? -(l.feedCost || 0) : l.type === 'fish_in' ? -(l.totalCost || 0) : l.type === 'fish_out' ? (l.totalRevenue || 0) : 0;
+    let moneyFmt = money > 0 ? `<span class="profit">+${money.toLocaleString('ar-EG')} ج.م</span>` : money < 0 ? `<span class="loss">${money.toLocaleString('ar-EG')} ج.م</span>` : `-`;
+    content += `<tr>
+      <td>${typeName}</td><td>${secName}</td><td>${details}</td>
+      <td dir="ltr">${moneyFmt}</td><td>${fmtDate(l.date)}</td><td>${l.notes || ''}</td>
+    </tr>`;
+  });
+  content += `</table>`;
+
+  const fullHtml = createExcelHTML(content);
+  downloadExcelBlob(fullHtml, 'بيانات_المزرعة_الشاملة');
+}
+
+// 4. تصدير قطاع منفرد (منسق)
+function exportSectorData(secKey) {
+  const sec = SECTORS[secKey];
+  const secName = sec ? sec.name : secKey;
+  const p = sectorPnL(secKey);
+
+  // قسم 1: التقرير المالي للقطاع
+  let content = `<h2>📊 التقرير المالي لـ: ${secName}</h2>
+  <table>
+    <tr>
+      <th class="hdr">تكلفة الأسماك</th>
+      <th class="hdr">تكلفة العلف</th>
+      <th class="hdr">التكلفة الكلية للقطاع</th>
+      <th class="hdr">إيرادات المبيعات</th>
+      <th class="hdr">الربح / الخسارة</th>
+    </tr>
+    <tr>
+      <td>${p.fishCost.toLocaleString('ar-EG')} ج.م</td>
+      <td>${p.feedCost.toLocaleString('ar-EG')} ج.م</td>
+      <td>${p.totalCost.toLocaleString('ar-EG')} ج.م</td>
+      <td>${p.revenue.toLocaleString('ar-EG')} ج.م</td>
+      <td class="${p.net > 0 ? 'profit' : p.net < 0 ? 'loss' : ''}" dir="ltr">${p.net > 0 ? '+' : ''}${p.net.toLocaleString('ar-EG')} ج.م</td>
+    </tr>
+  </table>`;
+
+  // قسم 2: الأسماك في القطاع
+  content += `<h2>🐟 الأسماك الحالية في ${secName}</h2>
+  <table>
+    <tr>
+      <th class="hdr">النوع</th><th class="hdr">الكمية</th><th class="hdr">الوحدة</th>
+      <th class="hdr">سعر الشراء</th><th class="hdr">الإجمالي</th><th class="hdr">التاريخ</th><th class="hdr">ملاحظات</th>
+    </tr>`;
+  const fishData = state.sectors[secKey]?.fish || {};
+  Object.values(fishData).forEach(f => {
+    let cost = (f.value || 0) * (f.price || 0);
+    content += `<tr>
+      <td>${f.type}</td><td>${f.value}</td>
+      <td>${f.unit === 'count' ? 'قطعة' : f.unit === 'kg' ? 'كجم' : 'طن'}</td>
+      <td>${f.price ? f.price.toLocaleString('ar-EG') + ' ج.م' : '-'}</td>
+      <td>${cost > 0 ? cost.toLocaleString('ar-EG') + ' ج.م' : '-'}</td>
+      <td>${fmtDate(f.date)}</td><td>${f.notes || ''}</td>
+    </tr>`;
+  });
+  content += `</table>`;
+
+  // قسم 3: سجل عمليات القطاع
+  content += `<h2>📋 سجل عمليات ${secName}</h2>
+  <table>
+    <tr>
+      <th class="hdr">العملية</th><th class="hdr">التفاصيل</th>
+      <th class="hdr">التأثير المالي</th><th class="hdr">التاريخ</th><th class="hdr">ملاحظات</th>
+    </tr>`;
+  const secLogs = Object.values(state.logs).filter(l => l && l.sector === secKey).sort((a,b) => (b.ts || 0) - (a.ts || 0));
+  secLogs.forEach(l => {
+    let typeName = l.type === 'feed_out' ? '🍽️ إخراج علف' : l.type === 'fish_in' ? '🐟 إضافة سمك' : l.type === 'fish_out' ? '🐠 بيع سمك' : 'أخرى';
+    let details = l.type === 'feed_out' ? `علف ${l.feedType}% - ${l.qtyLabel}` : l.type === 'fish_in' ? `${l.fishType} - ${l.fishDisplay}` : l.type === 'fish_out' ? `${l.fishType} - ${l.qtyLabel || 'إخراج يدوي'}` : '';
+    let money = l.type === 'feed_out' ? -(l.feedCost || 0) : l.type === 'fish_in' ? -(l.totalCost || 0) : l.type === 'fish_out' ? (l.totalRevenue || 0) : 0;
+    let moneyFmt = money > 0 ? `<span class="profit">+${money.toLocaleString('ar-EG')} ج.م</span>` : money < 0 ? `<span class="loss">${money.toLocaleString('ar-EG')} ج.م</span>` : `-`;
+    content += `<tr>
+      <td>${typeName}</td><td>${details}</td><td dir="ltr">${moneyFmt}</td>
+      <td>${fmtDate(l.date)}</td><td>${l.notes || ''}</td>
+    </tr>`;
+  });
+  content += `</table>`;
+
+  const fullHtml = createExcelHTML(content);
+  downloadExcelBlob(fullHtml, `تقرير_${secName}`);
+}
+
+async function resetSectorData(secKey) {
+  const secName = SECTORS[secKey]?.name || secKey;
+  if(!confirm(`⚠️ تحذير خطير: هل أنت متأكد من تصفير وحذف جميع بيانات (أسماك وسجلات) قطاع "${secName}" بالكامل؟ لا يمكن التراجع عن هذا الإجراء.`)) return;
+
+  // حذف الأسماك الخاصة بالقطاع
+  await window.dbRemove(window.dbRef(db, `sectors/${secKey}/fish`));
+
+  // حذف جميع السجلات المتعلقة بهذا القطاع
+  const logsToDel = Object.entries(state.logs).filter(([,l]) => l && l.sector === secKey);
+  for(const [lid] of logsToDel) {
+    await window.dbRemove(window.dbRef(db, `logs/${lid}`));
+  }
+
+  toast(`✅ تم تصفير بيانات ${secName} بنجاح`, 'ok');
+}
+
+async function resetAllProgramData() {
+  if(!confirm('⚠️ تحذير خطير جداً: هل أنت متأكد من مسح جميع بيانات البرنامج (جميع القطاعات، المخزن، والسجلات) بالكامل؟ لا يمكن استرجاعها!!')) return;
+  if(prompt('هذا الإجراء سيمسح كل شيء. اكتب "تأكيد" للمتابعة:') !== 'تأكيد') {
+      return toast('❌ تم إلغاء عملية المسح', 'err');
+  }
+  
+  await window.dbSet(window.dbRef(db, '/'), { sectors: {}, store: {}, logs: {} });
+  toast('🗑️ تم تصفير جميع بيانات البرنامج بالكامل', 'ok');
+}
+
 </script>
 </body>
 </html>
