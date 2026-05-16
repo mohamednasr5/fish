@@ -12,6 +12,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -1661,6 +1662,92 @@ function installApp(){ if(!deferredPrompt) return; deferredPrompt.prompt(); defe
 if('serviceWorker'in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 
 // ══════════════════════════════════════════════════════════════════
+// ✅ دوال مساعدة للتصدير بصيغة Excel مع التنسيق والدعم للأجهزة المحمولة
+// ══════════════════════════════════════════════════════════════════
+
+function applyExcelFormatting(ws, data) {
+  const headerFill = { patternType: 'solid', fgColor: { rgb: 'FF0066CC' } };
+  const headerFont = { bold: true, color: { rgb: 'FFFFFFFF' }, size: 12 };
+  const sectionFill = { patternType: 'solid', fgColor: { rgb: 'FF00A3E0' } };
+  const sectionFont = { bold: true, color: { rgb: 'FFFFFFFF' }, size: 11 };
+  const dataBorder = {
+    top: { style: 'thin', color: { rgb: 'FF0066CC' } },
+    bottom: { style: 'thin', color: { rgb: 'FF0066CC' } },
+    left: { style: 'thin', color: { rgb: 'FF0066CC' } },
+    right: { style: 'thin', color: { rgb: 'FF0066CC' } }
+  };
+  
+  const headerKeywords = ['القطاع', 'النوع', 'الكمية', 'تكلفة', 'إيرادات', 'الربح', 'الخسارة', 
+                         'التاريخ', 'ملاحظات', 'التفاصيل', 'التأثير', 'العملية', 'الوحدة', 
+                         'سعر', 'الإجمالي', 'الطفو', 'شيكارة', 'طن', 'كجم', 'الأسماك', 
+                         'العلف', 'البيع', 'الوجهة', 'صافي'];
+  
+  // تطبيق التنسيق على جميع الخلايا
+  for (let rowIdx = 0; rowIdx < data.length; rowIdx++) {
+    const row = data[rowIdx];
+    if (!row) continue;
+    
+    for (let colIdx = 0; colIdx < row.length; colIdx++) {
+      const cellRef = XLSX.utils.encode_cell({ r: rowIdx, c: colIdx });
+      const cell = ws[cellRef];
+      
+      if (!cell) continue;
+      
+      const cellValue = String(row[colIdx] || '');
+      
+      // تطبيق الحدود على جميع الخلايا
+      cell.border = dataBorder;
+      cell.alignment = { horizontal: 'right', vertical: 'center', wrapText: true };
+      
+      // تنسيق أقسام العناوين (التي تحتوي على أيقونات)
+      if (cellValue.includes('📊') || cellValue.includes('📈') || cellValue.includes('🐟') || 
+          cellValue.includes('🏭') || cellValue.includes('📋')) {
+        cell.fill = sectionFill;
+        cell.font = sectionFont;
+      }
+      // تنسيق رؤوس الأعمدة
+      else if (headerKeywords.some(keyword => cellValue.includes(keyword))) {
+        cell.fill = headerFill;
+        cell.font = headerFont;
+      }
+    }
+  }
+}
+
+function exportToFile(workbook, fileName) {
+  try {
+    // محاولة استخدام XLSX.writeFile أولاً (الأفضل)
+    XLSX.writeFile(workbook, fileName);
+    toast('✅ تم تصدير البيانات بنجاح', 'ok');
+  } catch (e) {
+    // احتياطي للأجهزة المحمولة
+    try {
+      const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      
+      if (navigator.msSaveBlob) {
+        // IE 10+
+        navigator.msSaveBlob(blob, fileName);
+      } else {
+        // جميع المتصفحات الأخرى (Chrome, Firefox, Safari, Edge)
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(url), 100);
+      }
+      toast('✅ تم تصدير البيانات بنجاح', 'ok');
+    } catch (err) {
+      toast('❌ حدث خطأ في التصدير. يرجى المحاولة من جهاز آخر.', 'err');
+      console.error('Export error:', err);
+    }
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
 // ✅ دوال التصدير بصيغة Excel الحقيقية (لحل مشكلة الهواتف)
 // ══════════════════════════════════════════════════════════════════
 
@@ -1756,14 +1843,17 @@ function exportAllData() {
     ]);
   });
 
-  // تحويل المصفوفة إلى ملف إكسيل
+  // تحويل المصفوفة إلى ملف إكسيل مع التنسيق
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet(ws_data);
   ws['!dir'] = 'rtl'; // لدعم اللغة العربية
   ws['!cols'] = [{wch: 25}, {wch: 25}, {wch: 25}, {wch: 25}, {wch: 25}, {wch: 25}, {wch: 20}]; // عرض الأعمدة
   
+  // إضافة التنسيق للجداول
+  applyExcelFormatting(ws, ws_data);
+  
   XLSX.utils.book_append_sheet(wb, ws, "البيانات الشاملة");
-  XLSX.writeFile(wb, "بيانات_المزرعة_الشاملة.xlsx");
+  exportToFile(wb, "بيانات_المزرعة_الشاملة.xlsx");
 }
 
 function exportSectorData(secKey) {
@@ -1824,8 +1914,11 @@ function exportSectorData(secKey) {
   ws['!dir'] = 'rtl';
   ws['!cols'] = [{wch: 25}, {wch: 35}, {wch: 25}, {wch: 20}, {wch: 25}];
   
+  // إضافة التنسيق
+  applyExcelFormatting(ws, ws_data);
+  
   XLSX.utils.book_append_sheet(wb, ws, secName);
-  XLSX.writeFile(wb, `تقرير_${secName.replace(/\s+/g, '_')}.xlsx`);
+  exportToFile(wb, `تقرير_${secName.replace(/\s+/g, '_')}.xlsx`);
 }
 
 async function resetSectorData(secKey) {
