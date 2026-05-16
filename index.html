@@ -11,6 +11,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
   import { getDatabase, ref, set, push, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
@@ -1659,47 +1661,14 @@ function installApp(){ if(!deferredPrompt) return; deferredPrompt.prompt(); defe
 if('serviceWorker'in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 
 // ══════════════════════════════════════════════════════════════════
-// ✅ دوال التصدير المنسقة بصيغة Excel (الشاملة + القطاعات)
+// ✅ دوال التصدير بصيغة Excel الحقيقية (لحل مشكلة الهواتف)
 // ══════════════════════════════════════════════════════════════════
 
-// 1. مولد هيكل الـ Excel كـ HTML مع التنسيقات والألوان
-function createExcelHTML(content) {
-  return `
-  <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-  <head>
-  <meta charset="utf-8">
-  <style>
-    body { direction: rtl; font-family: 'Cairo', Tahoma, Arial, sans-serif; background-color: #ffffff; }
-    table { border-collapse: collapse; width: 100%; margin-bottom: 30px; }
-    th, td { border: 1px solid #000000; padding: 10px; text-align: center; font-size: 14px; }
-    th { background-color: #071e35; color: #ffffff; font-weight: bold; font-size: 15px; }
-    .hdr { background-color: #00b4d8; color: #ffffff; }
-    .sub-hdr { background-color: #e8f4fd; color: #071e35; font-weight: bold; }
-    .profit { color: #0a8a6e; font-weight: bold; }
-    .loss { color: #b91c1c; font-weight: bold; }
-    h2 { text-align: center; color: #071e35; border-bottom: 2px solid #00b4d8; padding-bottom: 10px; }
-  </style>
-  </head>
-  <body>
-    ${content}
-  </body>
-  </html>`;
-}
-
-// 2. دالة تنزيل الملف
-function downloadExcelBlob(html, filename) {
-  // نضيف BOM \uFEFF لتتعرف برامج Office على ترميز UTF-8
-  const blob = new Blob(['\uFEFF' + html], { type: 'application/vnd.ms-excel;charset=utf-8' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = filename + '.xls';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-}
-
-// 3. تصدير كامل المزرعة (منسق)
 function exportAllData() {
+  if (typeof XLSX === 'undefined') {
+    return toast('❌ يرجى الانتظار، جاري تحميل مكتبة التصدير...', 'err');
+  }
+
   // حسابات إحصائيات المزرعة
   const totalFish = Object.values(state.sectors).reduce((s,sec)=>{ if(sec&&sec.fish) Object.values(sec.fish).forEach(f=>s+=fishKg(f)); return s; },0);
   const totalFeed = Object.values(state.store).reduce((s,v)=>s+stockToKg(v),0);
@@ -1709,180 +1678,154 @@ function exportAllData() {
   const totalCostAll = farmCost + feedCost;
   const netPnL    = harvestRev - totalCostAll;
 
+  const ws_data = [];
+
   // قسم 1: إحصائيات المزرعة الرئيسية
-  let content = `<h2>📊 إحصائيات المزرعة الرئيسية</h2>
-  <table>
-    <tr>
-      <th class="hdr">إجمالي الأسماك</th>
-      <th class="hdr">إجمالي العلف</th>
-      <th class="hdr">تكلفة الأسماك</th>
-      <th class="hdr">تكلفة العلف</th>
-      <th class="hdr">إيرادات البيع</th>
-      <th class="hdr">صافي الربح / الخسارة</th>
-    </tr>
-    <tr>
-      <td>${totalFish >= 1000 ? (totalFish/1000).toFixed(2) + ' طن' : totalFish.toFixed(0) + ' كجم'}</td>
-      <td>${totalFeed >= 1000 ? (totalFeed/1000).toFixed(2) + ' طن' : totalFeed.toFixed(0) + ' كجم'}</td>
-      <td>${farmCost.toLocaleString('ar-EG')} ج.م</td>
-      <td>${feedCost.toLocaleString('ar-EG')} ج.م</td>
-      <td>${harvestRev.toLocaleString('ar-EG')} ج.م</td>
-      <td class="${netPnL > 0 ? 'profit' : netPnL < 0 ? 'loss' : ''}" dir="ltr">${netPnL > 0 ? '+' : ''}${netPnL.toLocaleString('ar-EG')} ج.م</td>
-    </tr>
-  </table>`;
+  ws_data.push(["📊 إحصائيات المزرعة الرئيسية"]);
+  ws_data.push(["إجمالي الأسماك", "إجمالي العلف", "تكلفة الأسماك", "تكلفة العلف", "إيرادات البيع", "صافي الربح / الخسارة"]);
+  ws_data.push([
+    totalFish >= 1000 ? (totalFish/1000).toFixed(2) + ' طن' : totalFish.toFixed(0) + ' كجم',
+    totalFeed >= 1000 ? (totalFeed/1000).toFixed(2) + ' طن' : totalFeed.toFixed(0) + ' كجم',
+    farmCost.toLocaleString('ar-EG') + ' ج.م',
+    feedCost.toLocaleString('ar-EG') + ' ج.م',
+    harvestRev.toLocaleString('ar-EG') + ' ج.م',
+    (netPnL > 0 ? '+' : '') + netPnL.toLocaleString('ar-EG') + ' ج.م'
+  ]);
+  ws_data.push([]); // سطر فارغ للفصل
 
   // قسم 2: المكسب والخسارة لكل قطاع
-  content += `<h2>📈 المكسب والخسارة لكل قطاع</h2>
-  <table>
-    <tr>
-      <th class="hdr">القطاع</th>
-      <th class="hdr">تكلفة الأسماك</th>
-      <th class="hdr">تكلفة العلف</th>
-      <th class="hdr">التكلفة الكلية للقطاع</th>
-      <th class="hdr">إيرادات المبيعات</th>
-      <th class="hdr">صافي القطاع</th>
-    </tr>`;
+  ws_data.push(["📈 المكسب والخسارة لكل قطاع"]);
+  ws_data.push(["القطاع", "تكلفة الأسماك", "تكلفة العلف", "التكلفة الكلية للقطاع", "إيرادات المبيعات", "صافي القطاع"]);
   Object.entries(SECTORS).forEach(([k, sec]) => {
     const p = sectorPnL(k);
     if(p.revenue === 0 && p.totalCost === 0) return;
-    content += `<tr>
-      <td class="sub-hdr">${sec.name}</td>
-      <td>${p.fishCost.toLocaleString('ar-EG')} ج.م</td>
-      <td>${p.feedCost.toLocaleString('ar-EG')} ج.م</td>
-      <td>${p.totalCost.toLocaleString('ar-EG')} ج.م</td>
-      <td>${p.revenue.toLocaleString('ar-EG')} ج.م</td>
-      <td class="${p.net > 0 ? 'profit' : p.net < 0 ? 'loss' : ''}" dir="ltr">${p.net > 0 ? '+' : ''}${p.net.toLocaleString('ar-EG')} ج.م</td>
-    </tr>`;
+    ws_data.push([
+      sec.name,
+      p.fishCost.toLocaleString('ar-EG') + ' ج.م',
+      p.feedCost.toLocaleString('ar-EG') + ' ج.م',
+      p.totalCost.toLocaleString('ar-EG') + ' ج.م',
+      p.revenue.toLocaleString('ar-EG') + ' ج.م',
+      (p.net > 0 ? '+' : '') + p.net.toLocaleString('ar-EG') + ' ج.م'
+    ]);
   });
-  content += `</table>`;
+  ws_data.push([]);
 
   // قسم 3: بيانات الأسماك
-  content += `<h2>🐟 بيانات الأسماك الحالية بالقطاعات</h2>
-  <table>
-    <tr>
-      <th class="hdr">القطاع</th><th class="hdr">النوع</th><th class="hdr">الكمية</th>
-      <th class="hdr">الوحدة</th><th class="hdr">سعر الشراء</th><th class="hdr">الإجمالي</th>
-      <th class="hdr">التاريخ</th><th class="hdr">ملاحظات</th>
-    </tr>`;
+  ws_data.push(["🐟 بيانات الأسماك الحالية بالقطاعات"]);
+  ws_data.push(["القطاع", "النوع", "الكمية", "الوحدة", "سعر الشراء", "الإجمالي", "التاريخ", "ملاحظات"]);
   Object.entries(SECTORS).forEach(([k, sec]) => {
     const fishData = state.sectors[k]?.fish || {};
     Object.values(fishData).forEach(f => {
       let cost = (f.value || 0) * (f.price || 0);
-      content += `<tr>
-        <td>${sec.name}</td><td>${f.type}</td><td>${f.value}</td>
-        <td>${f.unit === 'count' ? 'قطعة' : f.unit === 'kg' ? 'كجم' : 'طن'}</td>
-        <td>${f.price ? f.price.toLocaleString('ar-EG') + ' ج.م' : '-'}</td>
-        <td>${cost > 0 ? cost.toLocaleString('ar-EG') + ' ج.م' : '-'}</td>
-        <td>${fmtDate(f.date)}</td><td>${f.notes || ''}</td>
-      </tr>`;
+      ws_data.push([
+        sec.name,
+        f.type,
+        f.value,
+        f.unit === 'count' ? 'قطعة' : f.unit === 'kg' ? 'كجم' : 'طن',
+        f.price ? f.price.toLocaleString('ar-EG') + ' ج.م' : '-',
+        cost > 0 ? cost.toLocaleString('ar-EG') + ' ج.م' : '-',
+        fmtDate(f.date),
+        f.notes || ''
+      ]);
     });
   });
-  content += `</table>`;
+  ws_data.push([]);
 
   // قسم 4: المخزن
-  content += `<h2>🏭 رصيد المخزن الحالي</h2>
-  <table>
-    <tr>
-      <th class="hdr">نوع العلف</th><th class="hdr">الطفو</th><th class="hdr">شيكارة 25</th>
-      <th class="hdr">شيكارة 50</th><th class="hdr">طن</th><th class="hdr">إجمالي (كجم)</th>
-    </tr>`;
+  ws_data.push(["🏭 رصيد المخزن الحالي"]);
+  ws_data.push(["نوع العلف", "الطفو", "شيكارة 25", "شيكارة 50", "طن", "إجمالي (كجم)"]);
   ['30','18','25'].forEach(t => {
     const fS = getStock(t,'float'), sS = getStock(t,'sink');
-    content += `<tr><td rowspan="2" class="sub-hdr">علف ${t}%</td><td>🌊 عايم</td><td>${fS.b25||0}</td><td>${fS.b50||0}</td><td>${fS.ton||0}</td><td>${stockToKg(fS).toLocaleString('ar-EG')}</td></tr>`;
-    content += `<tr><td>⬇️ غاطس</td><td>${sS.b25||0}</td><td>${sS.b50||0}</td><td>${sS.ton||0}</td><td>${stockToKg(sS).toLocaleString('ar-EG')}</td></tr>`;
+    ws_data.push([`علف ${t}%`, "🌊 عايم", fS.b25||0, fS.b50||0, fS.ton||0, stockToKg(fS).toLocaleString('ar-EG')]);
+    ws_data.push([`علف ${t}%`, "⬇️ غاطس", sS.b25||0, sS.b50||0, sS.ton||0, stockToKg(sS).toLocaleString('ar-EG')]);
   });
-  content += `</table>`;
+  ws_data.push([]);
 
   // قسم 5: سجل العمليات
-  content += `<h2>📋 سجل العمليات الكامل</h2>
-  <table>
-    <tr>
-      <th class="hdr">العملية</th><th class="hdr">القطاع / الوجهة</th><th class="hdr">التفاصيل</th>
-      <th class="hdr">التأثير المالي</th><th class="hdr">التاريخ</th><th class="hdr">ملاحظات</th>
-    </tr>`;
+  ws_data.push(["📋 سجل العمليات الكامل"]);
+  ws_data.push(["العملية", "القطاع / الوجهة", "التفاصيل", "التأثير المالي", "التاريخ", "ملاحظات"]);
   Object.values(state.logs).sort((a,b)=>(b.ts || 0)-(a.ts || 0)).forEach(l => {
     let secName = SECTORS[l.sector]?.name || l.sector || 'المخزن';
     let typeName = l.type === 'feed_out' ? '🍽️ إخراج علف' : l.type === 'fish_in' ? '🐟 إضافة سمك' : l.type === 'fish_out' ? '🐠 بيع سمك' : l.type === 'store_in' ? '📦 إضافة للمخزن' : 'أخرى';
     let details = l.type === 'feed_out' ? `علف ${l.feedType}% - ${l.qtyLabel}` : l.type === 'store_in' ? `علف ${l.feedType}% - ${l.qtyLabel}` : l.type === 'fish_out' ? `${l.fishType} - ${l.qtyLabel || 'إخراج يدوي'}` : l.fishType || '';
     let money = l.type === 'feed_out' ? -(l.feedCost || 0) : l.type === 'fish_in' ? -(l.totalCost || 0) : l.type === 'fish_out' ? (l.totalRevenue || 0) : 0;
-    let moneyFmt = money > 0 ? `<span class="profit">+${money.toLocaleString('ar-EG')} ج.م</span>` : money < 0 ? `<span class="loss">${money.toLocaleString('ar-EG')} ج.م</span>` : `-`;
-    content += `<tr>
-      <td>${typeName}</td><td>${secName}</td><td>${details}</td>
-      <td dir="ltr">${moneyFmt}</td><td>${fmtDate(l.date)}</td><td>${l.notes || ''}</td>
-    </tr>`;
+    let moneyFmt = money > 0 ? `+${money.toLocaleString('ar-EG')} ج.م` : money < 0 ? `${money.toLocaleString('ar-EG')} ج.م` : `-`;
+    
+    ws_data.push([
+      typeName, secName, details, moneyFmt, fmtDate(l.date), l.notes || ''
+    ]);
   });
-  content += `</table>`;
 
-  const fullHtml = createExcelHTML(content);
-  downloadExcelBlob(fullHtml, 'بيانات_المزرعة_الشاملة');
+  // تحويل المصفوفة إلى ملف إكسيل
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(ws_data);
+  ws['!dir'] = 'rtl'; // لدعم اللغة العربية
+  ws['!cols'] = [{wch: 25}, {wch: 25}, {wch: 25}, {wch: 25}, {wch: 25}, {wch: 25}, {wch: 20}]; // عرض الأعمدة
+  
+  XLSX.utils.book_append_sheet(wb, ws, "البيانات الشاملة");
+  XLSX.writeFile(wb, "بيانات_المزرعة_الشاملة.xlsx");
 }
 
-// 4. تصدير قطاع منفرد (منسق)
 function exportSectorData(secKey) {
+  if (typeof XLSX === 'undefined') {
+    return toast('❌ يرجى الانتظار، جاري تحميل مكتبة التصدير...', 'err');
+  }
+
   const sec = SECTORS[secKey];
   const secName = sec ? sec.name : secKey;
   const p = sectorPnL(secKey);
+  const ws_data = [];
 
   // قسم 1: التقرير المالي للقطاع
-  let content = `<h2>📊 التقرير المالي لـ: ${secName}</h2>
-  <table>
-    <tr>
-      <th class="hdr">تكلفة الأسماك</th>
-      <th class="hdr">تكلفة العلف</th>
-      <th class="hdr">التكلفة الكلية للقطاع</th>
-      <th class="hdr">إيرادات المبيعات</th>
-      <th class="hdr">الربح / الخسارة</th>
-    </tr>
-    <tr>
-      <td>${p.fishCost.toLocaleString('ar-EG')} ج.م</td>
-      <td>${p.feedCost.toLocaleString('ar-EG')} ج.م</td>
-      <td>${p.totalCost.toLocaleString('ar-EG')} ج.م</td>
-      <td>${p.revenue.toLocaleString('ar-EG')} ج.م</td>
-      <td class="${p.net > 0 ? 'profit' : p.net < 0 ? 'loss' : ''}" dir="ltr">${p.net > 0 ? '+' : ''}${p.net.toLocaleString('ar-EG')} ج.م</td>
-    </tr>
-  </table>`;
+  ws_data.push([`📊 التقرير المالي لـ: ${secName}`]);
+  ws_data.push(["تكلفة الأسماك", "تكلفة العلف", "التكلفة الكلية للقطاع", "إيرادات المبيعات", "الربح / الخسارة"]);
+  ws_data.push([
+    p.fishCost.toLocaleString('ar-EG') + ' ج.م',
+    p.feedCost.toLocaleString('ar-EG') + ' ج.م',
+    p.totalCost.toLocaleString('ar-EG') + ' ج.م',
+    p.revenue.toLocaleString('ar-EG') + ' ج.م',
+    (p.net > 0 ? '+' : '') + p.net.toLocaleString('ar-EG') + ' ج.م'
+  ]);
+  ws_data.push([]);
 
   // قسم 2: الأسماك في القطاع
-  content += `<h2>🐟 الأسماك الحالية في ${secName}</h2>
-  <table>
-    <tr>
-      <th class="hdr">النوع</th><th class="hdr">الكمية</th><th class="hdr">الوحدة</th>
-      <th class="hdr">سعر الشراء</th><th class="hdr">الإجمالي</th><th class="hdr">التاريخ</th><th class="hdr">ملاحظات</th>
-    </tr>`;
+  ws_data.push([`🐟 الأسماك الحالية في ${secName}`]);
+  ws_data.push(["النوع", "الكمية", "الوحدة", "سعر الشراء", "الإجمالي", "التاريخ", "ملاحظات"]);
   const fishData = state.sectors[secKey]?.fish || {};
   Object.values(fishData).forEach(f => {
     let cost = (f.value || 0) * (f.price || 0);
-    content += `<tr>
-      <td>${f.type}</td><td>${f.value}</td>
-      <td>${f.unit === 'count' ? 'قطعة' : f.unit === 'kg' ? 'كجم' : 'طن'}</td>
-      <td>${f.price ? f.price.toLocaleString('ar-EG') + ' ج.م' : '-'}</td>
-      <td>${cost > 0 ? cost.toLocaleString('ar-EG') + ' ج.م' : '-'}</td>
-      <td>${fmtDate(f.date)}</td><td>${f.notes || ''}</td>
-    </tr>`;
+    ws_data.push([
+      f.type, f.value,
+      f.unit === 'count' ? 'قطعة' : f.unit === 'kg' ? 'كجم' : 'طن',
+      f.price ? f.price.toLocaleString('ar-EG') + ' ج.م' : '-',
+      cost > 0 ? cost.toLocaleString('ar-EG') + ' ج.م' : '-',
+      fmtDate(f.date), f.notes || ''
+    ]);
   });
-  content += `</table>`;
+  ws_data.push([]);
 
   // قسم 3: سجل عمليات القطاع
-  content += `<h2>📋 سجل عمليات ${secName}</h2>
-  <table>
-    <tr>
-      <th class="hdr">العملية</th><th class="hdr">التفاصيل</th>
-      <th class="hdr">التأثير المالي</th><th class="hdr">التاريخ</th><th class="hdr">ملاحظات</th>
-    </tr>`;
+  ws_data.push([`📋 سجل عمليات ${secName}`]);
+  ws_data.push(["العملية", "التفاصيل", "التأثير المالي", "التاريخ", "ملاحظات"]);
   const secLogs = Object.values(state.logs).filter(l => l && l.sector === secKey).sort((a,b) => (b.ts || 0) - (a.ts || 0));
   secLogs.forEach(l => {
     let typeName = l.type === 'feed_out' ? '🍽️ إخراج علف' : l.type === 'fish_in' ? '🐟 إضافة سمك' : l.type === 'fish_out' ? '🐠 بيع سمك' : 'أخرى';
     let details = l.type === 'feed_out' ? `علف ${l.feedType}% - ${l.qtyLabel}` : l.type === 'fish_in' ? `${l.fishType} - ${l.fishDisplay}` : l.type === 'fish_out' ? `${l.fishType} - ${l.qtyLabel || 'إخراج يدوي'}` : '';
     let money = l.type === 'feed_out' ? -(l.feedCost || 0) : l.type === 'fish_in' ? -(l.totalCost || 0) : l.type === 'fish_out' ? (l.totalRevenue || 0) : 0;
-    let moneyFmt = money > 0 ? `<span class="profit">+${money.toLocaleString('ar-EG')} ج.م</span>` : money < 0 ? `<span class="loss">${money.toLocaleString('ar-EG')} ج.م</span>` : `-`;
-    content += `<tr>
-      <td>${typeName}</td><td>${details}</td><td dir="ltr">${moneyFmt}</td>
-      <td>${fmtDate(l.date)}</td><td>${l.notes || ''}</td>
-    </tr>`;
+    let moneyFmt = money > 0 ? `+${money.toLocaleString('ar-EG')} ج.م` : money < 0 ? `${money.toLocaleString('ar-EG')} ج.م` : `-`;
+    
+    ws_data.push([
+      typeName, details, moneyFmt, fmtDate(l.date), l.notes || ''
+    ]);
   });
-  content += `</table>`;
 
-  const fullHtml = createExcelHTML(content);
-  downloadExcelBlob(fullHtml, `تقرير_${secName}`);
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(ws_data);
+  ws['!dir'] = 'rtl';
+  ws['!cols'] = [{wch: 25}, {wch: 35}, {wch: 25}, {wch: 20}, {wch: 25}];
+  
+  XLSX.utils.book_append_sheet(wb, ws, secName);
+  XLSX.writeFile(wb, `تقرير_${secName.replace(/\s+/g, '_')}.xlsx`);
 }
 
 async function resetSectorData(secKey) {
