@@ -1071,7 +1071,7 @@ function toggleZariaFeedPage(k){
   var f = document.getElementById('zariafeed-form-p-'+k);
   if(f) f.style.display = f.style.display==='none' ? 'block' : 'none';
 }
-// ── helpers: zaria feed float selector & stock info ──
+// ── helpers: zaria feed unit / float selector & stock info ──
 function zfwSetFloat(suffix, val){
   const fb = document.getElementById('zfw-float-'+suffix);
   const sb = document.getElementById('zfw-sink-'+suffix);
@@ -1083,23 +1083,55 @@ function zfwGetFloat(suffix){
   const sb = document.getElementById('zfw-sink-'+suffix);
   return sb && sb.dataset.sel==='1' ? 'sink' : 'float';
 }
+function zfwSetUnit(suffix, unit){
+  ['bag25','ton','kg'].forEach(u=>{
+    const id = u==='bag25'?'zfw-u25-'+suffix : u==='ton'?'zfw-uton-'+suffix : 'zfw-ukg-'+suffix;
+    const el = document.getElementById(id);
+    if(el){ el.classList.toggle('active', u===unit); el.dataset.sel = u===unit?'1':''; }
+  });
+  const lbl   = document.getElementById('zfw-qty-lbl-'+suffix);
+  const input = document.getElementById('zfw-weight-'+suffix);
+  if(unit==='bag25'){ if(lbl) lbl.textContent='العدد (شيكارة 25 كجم) *'; if(input){ input.step='1'; input.placeholder='مثال: 2'; } }
+  else if(unit==='ton'){ if(lbl) lbl.textContent='الكمية بالطن *'; if(input){ input.step='0.001'; input.placeholder='مثال: 0.5'; } }
+  else { if(lbl) lbl.textContent='الكمية بالكجم *'; if(input){ input.step='0.001'; input.placeholder='مثال: 12.5'; } }
+  zfwStockInfo(suffix);
+}
+function zfwGetUnit(suffix){
+  const tonEl = document.getElementById('zfw-uton-'+suffix);
+  const kgEl  = document.getElementById('zfw-ukg-'+suffix);
+  if(tonEl && tonEl.dataset.sel==='1') return 'ton';
+  if(kgEl  && kgEl.dataset.sel==='1')  return 'kg';
+  return 'bag25';
+}
+function zfwToKg(val, unit){
+  if(unit==='bag25') return val * 25;
+  if(unit==='ton')   return val * 1000;
+  return val; // kg
+}
 function zfwStockInfo(suffix){
   const ftEl = document.getElementById('zfw-ftype-'+suffix); if(!ftEl) return;
   const ft   = ftEl.value;
   const fl   = zfwGetFloat(suffix);
-  const kg   = stockToKg(getStock(ft, fl));
-  const w    = parseFloat(document.getElementById('zfw-weight-'+suffix)?.value)||0;
+  const unit = zfwGetUnit(suffix);
+  const availKg = stockToKg(getStock(ft, fl));
+  const raw  = parseFloat(document.getElementById('zfw-weight-'+suffix)?.value)||0;
+  const wKg  = zfwToKg(raw, unit);
   const infoEl = document.getElementById('zfw-stock-info-'+suffix); if(!infoEl) return;
-  let msg = `📦 متاح (علف ${ft}% ${fl==='float'?'🌊 عايم':'⬇️ غاطس'}): <b>${kg.toLocaleString('ar-EG')} كجم</b>`;
-  if(w > 0) msg += w > kg
-    ? ' <span style="color:#e05252;font-weight:700;">⚠️ الكمية أكبر من المتاح!</span>'
-    : ` | بعد الخصم: <b style="color:#4cff91;">${(kg-w).toFixed(2)} كجم</b>`;
+  let msg = `📦 متاح (علف ${ft}% ${fl==='float'?'🌊 عايم':'⬇️ غاطس'}): <b>${availKg.toLocaleString('ar-EG')} كجم</b>`;
+  if(raw > 0){
+    const unitLbl = unit==='bag25'?`${raw} شيكارة = ${wKg} كجم` : unit==='ton'?`${raw} طن = ${wKg} كجم` : `${wKg} كجم`;
+    msg += ` | <span style="color:var(--gold);">${unitLbl}</span>`;
+    msg += wKg > availKg
+      ? ' <span style="color:#e05252;font-weight:700;">⚠️ أكبر من المتاح!</span>'
+      : ` | بعد الخصم: <b style="color:#4cff91;">${(availKg-wKg).toFixed(2)} كجم</b>`;
+  }
   infoEl.innerHTML = msg;
 }
 
 async function saveZariaFeed(k, isFromPage=false) {
   const suffix   = isFromPage ? 'p-'+k : k;
-  const weight   = parseFloat(document.getElementById('zfw-weight-'+suffix).value);
+  const raw      = parseFloat(document.getElementById('zfw-weight-'+suffix).value);
+  const unit     = zfwGetUnit(suffix);
   const notes    = document.getElementById('zfw-notes-'+suffix).value||'';
   const dateEl   = document.getElementById('zfw-date-'+suffix);
   const date     = dateEl ? dateEl.value : new Date().toISOString().split('T')[0];
@@ -1107,37 +1139,41 @@ async function saveZariaFeed(k, isFromPage=false) {
   const feedType = ftEl ? ftEl.value : '30';
   const float    = zfwGetFloat(suffix);
 
-  if(!weight || weight <= 0) return toast('❌ أدخل وزن علف صحيح بالكجم', 'err');
+  if(!raw || raw <= 0) return toast('❌ أدخل كمية صحيحة', 'err');
   if(!date) return toast('❌ اختر تاريخ إضافة العلف', 'err');
+
+  const weightKg = zfwToKg(raw, unit);
 
   // التحقق من الرصيد المتاح
   const storeKey = sk(feedType, float);
   const current  = getStock(feedType, float);
   const availKg  = stockToKg(current);
-  if(weight > availKg) return toast(`❌ الكمية أكبر من المتاح — المتاح: ${availKg.toFixed(2)} كجم`, 'err');
+  if(weightKg > availKg) return toast(`❌ الكمية (${weightKg} كجم) أكبر من المتاح — المتاح: ${availKg.toFixed(2)} كجم`, 'err');
 
-  // خصم من المخزن (تحويل كجم إلى طن)
-  const newStock = subtractStock(current, 'ton', weight / 1000);
+  // خصم من المخزن
+  const newStock = subtractStock(current, 'ton', weightKg / 1000);
   await window.dbUpdate(window.dbRef(db, 'store/' + storeKey), newStock);
 
   // حفظ سجل علف الزريعة
+  const unitLabel = unit==='bag25'?`${raw} شيكارة 25كجم` : unit==='ton'?`${raw} طن` : `${weightKg} كجم`;
   const lr = window.dbPush(window.dbRef(db, 'sectors/' + k + '/zariaFeed'));
-  await window.dbSet(lr, { weight, feedType, float, cost: 0, notes, date, ts: ts() });
+  await window.dbSet(lr, { weight: weightKg, rawVal: raw, unit, feedType, float, cost: 0, notes, date, ts: ts() });
 
-  // إضافة للسجل العام مثل إخراج علف عادي
+  // إضافة للسجل العام
   const logRef = window.dbPush(window.dbRef(db, 'logs'));
   await window.dbSet(logRef, {
-    type: 'feed_out', feedType, float, qty: weight,
-    qtyLabel: weight + ' كجم (زريعة)', remLabel: fmtStock(newStock),
-    sector: k, date, notes: 'علف زريعة | ' + (notes||''), ts: ts(), feedUnit: 'ton', feedCost: 0
+    type: 'feed_out', feedType, float, qty: weightKg,
+    qtyLabel: unitLabel + ' (زريعة)', remLabel: fmtStock(newStock),
+    sector: k, date, notes: 'علف زريعة | ' + (notes||''), ts: ts(), feedUnit: unit, feedCost: 0
   });
 
   document.getElementById('zfw-weight-'+suffix).value = '';
   document.getElementById('zfw-notes-'+suffix).value  = '';
   const formEl = document.getElementById('zariafeed-form-'+suffix);
   if(formEl) formEl.style.display = 'none';
-  toast(`✅ تم خصم ${weight} كجم (علف ${feedType}% ${float==='float'?'🌊 عايم':'⬇️ غاطس'}) من المخزن وتسجيله للزريعة`, 'ok');
+  toast(`✅ تم خصم ${unitLabel} (علف ${feedType}% ${float==='float'?'🌊 عايم':'⬇️ غاطس'}) من المخزن وتسجيله للزريعة`, 'ok');
 }
+
 
 async function delZariaFeed(secKey, zfid) {
   if(!confirm('حذف هذا السجل من علف الزريعة؟')) return;
@@ -1166,8 +1202,14 @@ function renderZariaFeedForm(k, isPage=false) {
     </div>
     <div id="zfw-stock-info-${suffix}" style="font-size:10px;color:var(--cyan);background:rgba(0,229,255,.07);border-radius:7px;padding:5px 9px;margin-bottom:7px;"></div>
     <div style="margin-bottom:7px;">
-      <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px;">⚖️ وزن العلف (كجم) *</label>
-      <input id="zfw-weight-${suffix}" type="number" min="0.001" step="0.001" placeholder="مثال: 5" class="fc" style="width:100%;" oninput="zfwStockInfo('${suffix}')"/>
+      <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px;">📦 وحدة الكمية *</label>
+      <div style="display:flex;gap:5px;margin-bottom:6px;">
+        <button id="zfw-u25-${suffix}"  class="btn active" style="flex:1;font-size:10px;padding:5px;" onclick="zfwSetUnit('${suffix}','bag25')">🛍️ شيكارة 25كجم</button>
+        <button id="zfw-uton-${suffix}" class="btn"        style="flex:1;font-size:10px;padding:5px;" onclick="zfwSetUnit('${suffix}','ton')">⚖️ طن</button>
+        <button id="zfw-ukg-${suffix}"  class="btn"        style="flex:1;font-size:10px;padding:5px;" onclick="zfwSetUnit('${suffix}','kg')">🔢 كجم</button>
+      </div>
+      <label id="zfw-qty-lbl-${suffix}" style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px;">العدد (شيكارة 25 كجم) *</label>
+      <input id="zfw-weight-${suffix}" type="number" min="0.001" step="1" placeholder="مثال: 2" class="fc" style="width:100%;" oninput="zfwStockInfo('${suffix}')"/>
     </div>
     <div style="margin-bottom:7px;">
       <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px;">📅 تاريخ إضافة العلف *</label>
