@@ -1071,30 +1071,74 @@ function toggleZariaFeedPage(k){
   var f = document.getElementById('zariafeed-form-p-'+k);
   if(f) f.style.display = f.style.display==='none' ? 'block' : 'none';
 }
-async function saveZariaFeed(k, isFromPage=false) {
-  const suffix = isFromPage ? 'p-'+k : k;
-  const weight = parseFloat(document.getElementById('zfw-weight-'+suffix).value);
-  const price  = parseFloat(document.getElementById('zfw-price-'+suffix).value)||0;
-  const notes  = document.getElementById('zfw-notes-'+suffix).value||'';
-  if(!weight || weight <= 0) return toast('❌ أدخل وزن علف صحيح بالكجم', 'err');
-  
-  const cost = weight * price;
-  const lr = window.dbPush(window.dbRef(db, 'sectors/' + k + '/zariaFeed'));
-  await window.dbSet(lr, {
-    weight,
-    price,
-    cost,
-    notes,
-    date: new Date().toISOString().split('T')[0],
-    ts: ts()
-  });
-  
-  document.getElementById('zfw-weight-'+suffix).value = '';
-  document.getElementById('zfw-price-'+suffix).value = '';
-  document.getElementById('zfw-notes-'+suffix).value = '';
-  document.getElementById('zariafeed-form-'+suffix).style.display = 'none';
-  toast('✅ تم تسجيل ' + weight + ' كجم علف زريعة منفصل بنجاح', 'ok');
+// ── helpers: zaria feed float selector & stock info ──
+function zfwSetFloat(suffix, val){
+  const fb = document.getElementById('zfw-float-'+suffix);
+  const sb = document.getElementById('zfw-sink-'+suffix);
+  if(fb) { fb.classList.toggle('active', val==='float'); fb.dataset.sel = val==='float'?'1':''; }
+  if(sb) { sb.classList.toggle('active', val==='sink');  sb.dataset.sel = val==='sink' ?'1':''; }
+  zfwStockInfo(suffix);
 }
+function zfwGetFloat(suffix){
+  const sb = document.getElementById('zfw-sink-'+suffix);
+  return sb && sb.dataset.sel==='1' ? 'sink' : 'float';
+}
+function zfwStockInfo(suffix){
+  const ftEl = document.getElementById('zfw-ftype-'+suffix); if(!ftEl) return;
+  const ft   = ftEl.value;
+  const fl   = zfwGetFloat(suffix);
+  const kg   = stockToKg(getStock(ft, fl));
+  const w    = parseFloat(document.getElementById('zfw-weight-'+suffix)?.value)||0;
+  const infoEl = document.getElementById('zfw-stock-info-'+suffix); if(!infoEl) return;
+  let msg = `📦 متاح (علف ${ft}% ${fl==='float'?'🌊 عايم':'⬇️ غاطس'}): <b>${kg.toLocaleString('ar-EG')} كجم</b>`;
+  if(w > 0) msg += w > kg
+    ? ' <span style="color:#e05252;font-weight:700;">⚠️ الكمية أكبر من المتاح!</span>'
+    : ` | بعد الخصم: <b style="color:#4cff91;">${(kg-w).toFixed(2)} كجم</b>`;
+  infoEl.innerHTML = msg;
+}
+
+async function saveZariaFeed(k, isFromPage=false) {
+  const suffix   = isFromPage ? 'p-'+k : k;
+  const weight   = parseFloat(document.getElementById('zfw-weight-'+suffix).value);
+  const notes    = document.getElementById('zfw-notes-'+suffix).value||'';
+  const dateEl   = document.getElementById('zfw-date-'+suffix);
+  const date     = dateEl ? dateEl.value : new Date().toISOString().split('T')[0];
+  const ftEl     = document.getElementById('zfw-ftype-'+suffix);
+  const feedType = ftEl ? ftEl.value : '30';
+  const float    = zfwGetFloat(suffix);
+
+  if(!weight || weight <= 0) return toast('❌ أدخل وزن علف صحيح بالكجم', 'err');
+  if(!date) return toast('❌ اختر تاريخ إضافة العلف', 'err');
+
+  // التحقق من الرصيد المتاح
+  const storeKey = sk(feedType, float);
+  const current  = getStock(feedType, float);
+  const availKg  = stockToKg(current);
+  if(weight > availKg) return toast(`❌ الكمية أكبر من المتاح — المتاح: ${availKg.toFixed(2)} كجم`, 'err');
+
+  // خصم من المخزن (تحويل كجم إلى طن)
+  const newStock = subtractStock(current, 'ton', weight / 1000);
+  await window.dbUpdate(window.dbRef(db, 'store/' + storeKey), newStock);
+
+  // حفظ سجل علف الزريعة
+  const lr = window.dbPush(window.dbRef(db, 'sectors/' + k + '/zariaFeed'));
+  await window.dbSet(lr, { weight, feedType, float, cost: 0, notes, date, ts: ts() });
+
+  // إضافة للسجل العام مثل إخراج علف عادي
+  const logRef = window.dbPush(window.dbRef(db, 'logs'));
+  await window.dbSet(logRef, {
+    type: 'feed_out', feedType, float, qty: weight,
+    qtyLabel: weight + ' كجم (زريعة)', remLabel: fmtStock(newStock),
+    sector: k, date, notes: 'علف زريعة | ' + (notes||''), ts: ts(), feedUnit: 'ton', feedCost: 0
+  });
+
+  document.getElementById('zfw-weight-'+suffix).value = '';
+  document.getElementById('zfw-notes-'+suffix).value  = '';
+  const formEl = document.getElementById('zariafeed-form-'+suffix);
+  if(formEl) formEl.style.display = 'none';
+  toast(`✅ تم خصم ${weight} كجم (علف ${feedType}% ${float==='float'?'🌊 عايم':'⬇️ غاطس'}) من المخزن وتسجيله للزريعة`, 'ok');
+}
+
 async function delZariaFeed(secKey, zfid) {
   if(!confirm('حذف هذا السجل من علف الزريعة؟')) return;
   await window.dbRemove(window.dbRef(db, 'sectors/' + secKey + '/zariaFeed/' + zfid));
@@ -1104,14 +1148,26 @@ function renderZariaFeedForm(k, isPage=false) {
   const suffix = isPage ? 'p-'+k : k;
   const today = new Date().toISOString().split('T')[0];
   return `<div id="zariafeed-form-${suffix}" style="display:none;background:rgba(244,162,97,.05);border:1px solid rgba(244,162,97,.25);border-radius:9px;padding:11px;margin-top:8px;">
-    <div style="font-size:11px;font-weight:700;color:var(--feed-cost-color);margin-bottom:8px;">🍽️ إضافة علف منفصل للزريعة (بالكجم)</div>
+    <div style="font-size:11px;font-weight:700;color:var(--feed-cost-color);margin-bottom:8px;">🍽️ إضافة علف للزريعة (يُخصم من المخزن)</div>
     <div style="margin-bottom:7px;">
-      <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px;">⚖️ وزن العلف (كجم) *</label>
-      <input id="zfw-weight-${suffix}" type="number" min="0.001" step="0.001" placeholder="مثال: 5" class="fc" style="width:100%;"/>
+      <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px;">🌾 نوع العلف *</label>
+      <select id="zfw-ftype-${suffix}" class="fc" style="width:100%;" onchange="zfwStockInfo('${suffix}')">
+        <option value="30">علف 30%</option>
+        <option value="18">علف 18%</option>
+        <option value="25">علف 25%</option>
+      </select>
     </div>
     <div style="margin-bottom:7px;">
-      <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px;">💰 سعر الكجم بالجنيه (اختياري)</label>
-      <input id="zfw-price-${suffix}" type="number" min="0" step="0.01" placeholder="0.00" class="fc" style="width:100%;"/>
+      <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px;">🌊 نوع الطفو *</label>
+      <div style="display:flex;gap:6px;">
+        <button id="zfw-float-${suffix}" class="btn active" style="flex:1;font-size:11px;padding:6px;" onclick="zfwSetFloat('${suffix}','float')">🌊 عايم</button>
+        <button id="zfw-sink-${suffix}"  class="btn"        style="flex:1;font-size:11px;padding:6px;" onclick="zfwSetFloat('${suffix}','sink')">⬇️ غاطس</button>
+      </div>
+    </div>
+    <div id="zfw-stock-info-${suffix}" style="font-size:10px;color:var(--cyan);background:rgba(0,229,255,.07);border-radius:7px;padding:5px 9px;margin-bottom:7px;"></div>
+    <div style="margin-bottom:7px;">
+      <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px;">⚖️ وزن العلف (كجم) *</label>
+      <input id="zfw-weight-${suffix}" type="number" min="0.001" step="0.001" placeholder="مثال: 5" class="fc" style="width:100%;" oninput="zfwStockInfo('${suffix}')"/>
     </div>
     <div style="margin-bottom:7px;">
       <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px;">📅 تاريخ إضافة العلف *</label>
@@ -1122,11 +1178,12 @@ function renderZariaFeedForm(k, isPage=false) {
       <input id="zfw-notes-${suffix}" type="text" placeholder="نوع العلف أو الملاحظات..." class="fc" style="width:100%;"/>
     </div>
     <div style="display:flex;gap:7px;">
-      <button class="btn btn-gold" style="flex:1;" onclick="saveZariaFeed('${k}', ${isPage})">✅ حفظ علف الزريعة</button>
+      <button class="btn btn-gold" style="flex:1;" onclick="saveZariaFeed('${k}', ${isPage})">✅ حفظ وخصم من المخزن</button>
       <button class="btn btn-danger" style="flex:1;" onclick="${isPage ? 'toggleZariaFeedPage' : 'toggleZariaFeedForm'}('${k}')">❌ إلغاء</button>
     </div>
   </div>`;
 }
+
 
 function sectorPnL(secKey){
   const revenue   = sectorHarvestRevenue(secKey);
@@ -1512,7 +1569,6 @@ function renderZaria(k){
     +'<option value="بوري">🐟 بوري</option>'
     +'<option value="طوبار">🐠 طوبار</option>'
     +'<option value="شبار">🐡 شبار</option>'
-    +'<option value="بياض">🫧 بياض</option>'
     +'</select>'
     +'</div>'
     +'<div style="margin-bottom:7px;">'
