@@ -857,18 +857,23 @@ const SECTORS = {
 function buildSectorOptions(selectId, includeStore = false) {
   const el = document.getElementById(selectId);
   if (!el) return;
+
   let html = '';
+
   if (includeStore) {
     html += '<option value="all">كل القطاعات</option>';
+
     Object.entries(SECTORS).forEach(([k, s]) => {
-      html += `<option value="${k}">${s.icon} ${s.name}</option>';
+      html += `<option value="${k}">${s.icon} ${s.name}</option>`;
     });
+
     html += '<option value="store">المخزن</option>';
   } else {
     Object.entries(SECTORS).forEach(([k, s]) => {
-      html += `<option value="${k}">${s.icon} ${s.name}</option>';
+      html += `<option value="${k}">${s.icon} ${s.name}</option>`;
     });
   }
+
   el.innerHTML = html;
 }
 
