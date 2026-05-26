@@ -356,6 +356,7 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
 .li-ttl{font-size:12px;font-weight:700;color:var(--text);}
 .li-det{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.65;}
 .li-time{font-size:10px;color:var(--muted);margin-top:3px;}
+.pin-keypad .pk-btn { user-select: none; -webkit-user-select: none; }
 .li-acts{display:flex;gap:5px;margin-top:7px;}
 
 .mo{position:fixed;inset:0;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:200;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s;}
@@ -370,7 +371,7 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
 .toast.ok{border-color:rgba(6,214,160,.5);}
 .toast.err{border-color:rgba(255,107,107,.5);}
 
-.ibox{background:rgba(0,180,216,.08);border:1px solid rgba(0,180,216,.2);border-radius:99px;padding:9px 13px;font-size:11px;color:var(--muted);line-height:1.75;margin-bottom:12px;}
+.ibox{background:rgba(0,180,216,.08);border:1px solid rgba(0,180,216,.2);border-radius:9px;padding:9px 13px;font-size:11px;color:var(--muted);line-height:1.75;margin-bottom:12px;}
 .ibox b{color:var(--cyan);}
 .ibox.warn{background:rgba(255,209,102,.07);border-color:rgba(255,209,102,.25);}
 .ibox.warn b{color:var(--gold);}
@@ -410,7 +411,6 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
 .harvest-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:6px;}
 .harvest-kpi{background:rgba(0,0,0,.2);border-radius:7px;padding:6px 8px;text-align:center;}
 .harvest-kpi .kv{font-size:12px;font-weight:900;}
-.harvest-kpi .kl">إيرادات التصريف</div></div>
 .harvest-kpi .kl{font-size:9px;color:var(--muted);margin-top:1px;}
 .harvest-pnl{display:flex;align-items:center;justify-content:space-between;border-radius:8px;padding:8px 12px;margin-top:4px;}
 .harvest-pnl.profit{background:var(--profit-bg);border:1px solid var(--profit-border);}
@@ -546,7 +546,7 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
       <button class="nb" onclick="showPage('store')">🏭 المخزن</button>
       <button class="nb" onclick="showPage('feed')">🍽️ التغذية</button>
       <button class="nb" onclick="showPage('zaria')">🐟 الزريعة</button>
-        <button class="nb" onclick="showPage('logs')">📋 السجل</button>
+      <button class="nb" onclick="showPage('logs')">📋 السجل</button>
     </nav>
   </header>
 
@@ -694,11 +694,11 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
     </div>
 
     <div class="pg" id="pg-zaria">
-  <div class="pg-ttl">🐟 إدارة الزريعة</div>
-  <div id="zariaPageEl"><div class="loading"><div class="spin"></div></div></div>
-</div>
+      <div class="pg-ttl">🐟 إدارة الزريعة</div>
+      <div id="zariaPageEl"><div class="loading"><div class="spin"></div></div></div>
+    </div>
 
-<div class="pg" id="pg-logs">
+    <div class="pg" id="pg-logs">
       <div class="pg-ttl">📋 سجل العمليات</div>
       <div style="display:flex;gap:7px;margin-bottom:13px;">
         <select class="fc" id="lg-type" onchange="renderLogs()" style="flex:1;">
@@ -857,23 +857,18 @@ const SECTORS = {
 function buildSectorOptions(selectId, includeStore = false) {
   const el = document.getElementById(selectId);
   if (!el) return;
-
   let html = '';
-
   if (includeStore) {
     html += '<option value="all">كل القطاعات</option>';
-
     Object.entries(SECTORS).forEach(([k, s]) => {
       html += `<option value="${k}">${s.icon} ${s.name}</option>`;
     });
-
     html += '<option value="store">المخزن</option>';
   } else {
     Object.entries(SECTORS).forEach(([k, s]) => {
       html += `<option value="${k}">${s.icon} ${s.name}</option>`;
     });
   }
-
   el.innerHTML = html;
 }
 
@@ -896,7 +891,7 @@ function updatePinDots(){ for(let i=0;i<5;i++){ const d=document.getElementById(
 function checkPin(){
   const pw = pinBuffer;
   if(PASSWORDS[pw]){ doLogin(pw); }
-  else if(pw.length>=6){
+  else if(pw.length>=5){
     document.getElementById('login-err').classList.add('show');
     setTimeout(()=>{ pinBuffer=''; updatePinDots(); document.getElementById('login-err').classList.remove('show'); },1200);
   }
@@ -1107,6 +1102,7 @@ async function delZariaFeed(secKey, zfid) {
 }
 function renderZariaFeedForm(k, isPage=false) {
   const suffix = isPage ? 'p-'+k : k;
+  const today = new Date().toISOString().split('T')[0];
   return `<div id="zariafeed-form-${suffix}" style="display:none;background:rgba(244,162,97,.05);border:1px solid rgba(244,162,97,.25);border-radius:9px;padding:11px;margin-top:8px;">
     <div style="font-size:11px;font-weight:700;color:var(--feed-cost-color);margin-bottom:8px;">🍽️ إضافة علف منفصل للزريعة (بالكجم)</div>
     <div style="margin-bottom:7px;">
@@ -1116,6 +1112,10 @@ function renderZariaFeedForm(k, isPage=false) {
     <div style="margin-bottom:7px;">
       <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px;">💰 سعر الكجم بالجنيه (اختياري)</label>
       <input id="zfw-price-${suffix}" type="number" min="0" step="0.01" placeholder="0.00" class="fc" style="width:100%;"/>
+    </div>
+    <div style="margin-bottom:7px;">
+      <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px;">📅 تاريخ إضافة العلف *</label>
+      <input id="zfw-date-${suffix}" type="date" class="fc" style="width:100%;" value="${today}"/>
     </div>
     <div style="margin-bottom:9px;">
       <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px;">📝 ملاحظات (اختياري)</label>
@@ -1156,17 +1156,20 @@ function toggleZariaForm(k){
   if(f) f.style.display = f.style.display==='none' ? 'block' : 'none';
 }
 async function saveZaria(k){
-  var qty = parseInt(document.getElementById('zf-qty-'+k).value);
-  var price = parseFloat(document.getElementById('zf-price-'+k).value)||0;
-  var notes = document.getElementById('zf-notes-'+k).value||'';
+  var qty      = parseInt(document.getElementById('zf-qty-'+k).value);
+  var price    = parseFloat(document.getElementById('zf-price-'+k).value)||0;
+  var notes    = document.getElementById('zf-notes-'+k).value||'';
+  var fishType = document.getElementById('zf-fishtype-'+k) ? document.getElementById('zf-fishtype-'+k).value : 'بوري';
+  var date     = document.getElementById('zf-date-'+k) ? document.getElementById('zf-date-'+k).value : new Date().toISOString().split('T')[0];
   if(!qty || qty <= 0) return toast('❌ أدخل كمية صحيحة','err');
+  if(!date) return toast('❌ اختر تاريخ الإضافة','err');
   const lr = window.dbPush(window.dbRef(db, 'sectors/' + k + '/zaria'));
-  await window.dbSet(lr,{qty, price, notes, date:new Date().toISOString().split('T')[0], ts:ts()});
+  await window.dbSet(lr,{qty, price, notes, fishType, date, ts:ts()});
   document.getElementById('zf-qty-'+k).value='';
   document.getElementById('zf-price-'+k).value='';
   document.getElementById('zf-notes-'+k).value='';
   document.getElementById('zaria-form-'+k).style.display='none';
-  toast('✅ تمت إضافة '+qty.toLocaleString('ar-EG')+' زريعة','ok');
+  toast('✅ تمت إضافة '+qty.toLocaleString('ar-EG')+' زريعة ('+fishType+')','ok');
 }
 async function addZaria(secKey){ toggleZariaForm(secKey); }
 async function delZaria(secKey, zid){
@@ -1276,7 +1279,7 @@ function showPage(p){
 
 function renderFeedReadonly(){
   const el=document.getElementById('feed-readonly-data'); if(!el) return;
-  const logs=Object.values(state.logs).filter(l=>l&&l.type==='feed_out').sort((a,b)=>(b.ts||0)-(a.ts||0)).slice(0,20);
+  const logs=Object.values(state.logs).filter(l=>l&&l.type==='feed_out').sort((a,b)=>(b[1].ts||0)-(a[1].ts||0)).slice(0,20);
   el.innerHTML=logs.length ?logs.map(l=>logHTML(l,false)).join('') :'<div class="empty"><div class="ei">🍽️</div><p>لا توجد عمليات إخراج علف</p></div>';
 }
 
@@ -1361,7 +1364,6 @@ function renderDashboard(){
 
   renderCostCards(); renderFeedCostCards(); renderPnLCards();
 
-  // ✅ يستخدم SECTORS مباشرة
   document.getElementById('d-sectors').innerHTML = Object.entries(SECTORS).map(([k,sec])=>{
     const fl = (state.sectors[k]?.fish) ? Object.values(state.sectors[k].fish) : []; const kg = fl.reduce((s,f)=>s+fishKg(f),0);
     return `<div class="sec-card" onclick="showPage('sectors')" style="cursor:pointer;margin-bottom:9px;">
@@ -1453,7 +1455,6 @@ function renderZaria(k){
   const zariaQtyT  = zariaList.reduce(function(s,e){return s+(e[1].qty||0);},0);
   const zariaCostT = sectorZariaCost(k);
   
-  // علف الزريعة المنفصل
   const zariaFeedList = Object.entries((state.sectors[k]||{}).zariaFeed||{});
   const zariaFeedKgT  = sectorZariaFeedKg(k);
   const zariaFeedCostT = sectorZariaFeedCost(k);
@@ -1465,8 +1466,8 @@ function renderZaria(k){
     h += zariaList.map(function(entry){
       var zid=entry[0], z=entry[1];
       return '<div class="zaria-item"><div>'
-        +'<div style="font-size:12px;font-weight:700;color:var(--cyan);">'+(z.qty||0).toLocaleString('ar-EG')+' قطعة</div>'
-        +(z.price>0?'<div style="font-size:10px;color:var(--muted);">'+fmtCost(z.price)+' ج.م/قطعة · إجمالي: '+fmtCost((z.qty||0)*z.price)+'</div>':'')
+        +'<div style="font-size:12px;font-weight:700;color:var(--cyan);">'+(z.fishType?'<span style="margin-left:6px;font-size:10px;background:rgba(0,229,255,.18);border-radius:8px;padding:1px 8px;color:var(--cyan);">'+z.fishType+'</span> ':'')+''+(z.qty||0).toLocaleString('ar-EG')+' قطعة</div>'
+        +(z.price>0?'<div style="font-size:10px;color:var(--muted);">💰 إجمالي الشراء: '+fmtCost(z.price)+'</div>':'')
         +'<div style="font-size:10px;color:var(--muted);">'+fmtDate(z.date)+(z.notes?' · '+z.notes:'')+'</div>'
         +'</div><button class="b-del" data-sec="'+k+'" data-zid="'+zid+'" onclick="delZaria(this.dataset.sec,this.dataset.zid)">🗑️</button></div>';
     }).join('');
@@ -1479,7 +1480,6 @@ function renderZaria(k){
     }
   }
   
-  // عرض تغذية الزريعة المنفصلة
   h += '<div style="margin-top:10px;border-top:1px solid rgba(244,162,97,0.15);padding-top:8px;">';
   h += '<div style="font-size:11px;font-weight:700;color:var(--feed-cost-color);margin-bottom:6px;">🌾 سجل استهلاك علف الزريعة المنفصل:</div>';
   if(zariaFeedList.length === 0){
@@ -1504,16 +1504,28 @@ function renderZaria(k){
   }
   h += '</div>';
 
-  // نماذج الإدخال المضمنة للزريعة والعلف
   h += '<div id="zaria-form-'+k+'" style="display:none;background:rgba(0,0,0,.25);border:1px solid rgba(0,229,255,.2);border-radius:9px;padding:11px;margin-top:8px;">'
     +'<div style="font-size:11px;font-weight:700;color:var(--cyan);margin-bottom:8px;">➕ إضافة زريعة جديدة</div>'
     +'<div style="margin-bottom:7px;">'
-    +'<label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px;">🐟 الكمية (بالعدد) *</label>'
+    +'<label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px;">🐠 نوع السمك *</label>'
+    +'<select id="zf-fishtype-'+k+'" class="fc" style="width:100%;">'
+    +'<option value="بوري">🐟 بوري</option>'
+    +'<option value="طوبار">🐠 طوبار</option>'
+    +'<option value="شبار">🐡 شبار</option>'
+    +'<option value="بياض">🫧 بياض</option>'
+    +'</select>'
+    +'</div>'
+    +'<div style="margin-bottom:7px;">'
+    +'<label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px;">🔢 الكمية (بالعدد) *</label>'
     +'<input id="zf-qty-'+k+'" type="number" min="1" step="1" placeholder="مثال: 5000" class="fc" style="width:100%;"/>'
     +'</div>'
     +'<div style="margin-bottom:7px;">'
-    +'<label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px;">💰 السعر للقطعة بالجنيه (اختياري)</label>'
+    +'<label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px;">💰 سعر الشراء الإجمالي بالجنيه (اختياري)</label>'
     +'<input id="zf-price-'+k+'" type="number" min="0" step="0.01" placeholder="0.00" class="fc" style="width:100%;"/>'
+    +'</div>'
+    +'<div style="margin-bottom:7px;">'
+    +'<label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px;">📅 تاريخ الإضافة *</label>'
+    +'<input id="zf-date-'+k+'" type="date" class="fc" style="width:100%;" value="'+(new Date().toISOString().split('T')[0])+'" />'
     +'</div>'
     +'<div style="margin-bottom:9px;">'
     +'<label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px;">📝 ملاحظات (اختياري)</label>'
@@ -1567,8 +1579,8 @@ function renderZariaPage(){
       zariaList.forEach(function(entry){
         var zid=entry[0], z=entry[1];
         html += '<div class="zaria-item" style="margin-bottom:5px;">';
-        html += '<div><div style="font-size:12px;font-weight:700;color:var(--cyan);">'+(z.qty||0).toLocaleString('ar-EG')+' قطعة</div>';
-        if(z.price>0) html += '<div style="font-size:10px;color:var(--muted);">'+fmtCost(z.price)+' ج.م/قطعة · إجمالي: '+fmtCost((z.qty||0)*z.price)+'</div>';
+        html += '<div><div style="font-size:12px;font-weight:700;color:var(--cyan);">'+(z.fishType?'<span style="margin-left:6px;font-size:10px;background:rgba(0,229,255,.18);border-radius:8px;padding:1px 8px;color:var(--cyan);">'+z.fishType+'</span> ':'')+''+(z.qty||0).toLocaleString('ar-EG')+' قطعة</div>';
+        if(z.price>0) html += '<div style="font-size:10px;color:var(--muted);">💰 إجمالي الشراء: '+fmtCost(z.price)+'</div>';
         html += '<div style="font-size:10px;color:var(--muted);">'+fmtDate(z.date)+(z.notes?' · '+z.notes:'')+'</div></div>';
         html += '<button class="b-del" data-sec="'+k+'" data-zid="'+zid+'" onclick="delZaria(this.dataset.sec,this.dataset.zid)">🗑️</button>';
         html += '</div>';
@@ -1587,7 +1599,6 @@ function renderZariaPage(){
       });
     }
 
-    // تصحيح النماذج لصفحة الزريعة المستقلة للقطاع
     var zf = renderZaria(k); 
     zf = zf.replace(/id="zaria-form-[^"]+"/,'id="zaria-form-p-'+k+'"'); 
     zf = zf.replace(/id="zf-qty-[^"]+"/g,'id="zf-qty-p-'+k+'"'); 
@@ -1605,7 +1616,6 @@ function renderZariaPage(){
   if(!hasAny){
     html = '<div class="empty"><div class="ei">🐟</div><p>لا توجد زريعة أو تغذية زريعة مسجلة في أي قطاع حتى الآن</p></div>';
   } else {
-    // كارت الإجمالي الشامل لصفحة الزريعة
     html = '<div style="background:linear-gradient(135deg,rgba(0,229,255,.12),rgba(0,180,216,.08));border:1px solid rgba(0,229,255,.3);border-radius:var(--r);padding:15px;margin-bottom:14px;">'
       + '<div style="font-size:13px;font-weight:700;color:var(--cyan);margin-bottom:10px;">📊 إجمالي الزريعة والتغذية المنفصلة الشاملة — كل القطاعات</div>'
       + '<div style="display:flex;gap:10px;flex-wrap:wrap;">'
@@ -2191,7 +2201,7 @@ function exportAllData() {
   Object.keys(SECTORS).forEach(k=>{ if(Object.keys((state.sectors[k]||{}).zaria||{}).length>0 || Object.keys((state.sectors[k]||{}).zariaFeed||{}).length>0) hasZaria=true; });
   if(hasZaria){
     ws_data.push(['🐟 الزريعة وتغذيتها بالقطاعات (منفصلة تماماً)','','','','','']);
-    ws_data.push(['القطاع','الكمية (عدد)','تكلفة الشراء الأصلية','إجمالي وزن العلف الكلي (كجم)','إجمالي تكلفة العلف المنفصل','ملاحظات']);
+    ws_data.push(['القطاع','نوع السمك / النوع','الكمية (عدد)','تكلفة الشراء','تاريخ العملية','الوزن (كجم)','تكلفة العلف','ملاحظات']);
     let totalZariaQty=0, totalZariaCost=0, totalZariaFeedKg=0, totalZariaFeedCost=0;
     Object.entries(SECTORS).forEach(([k,sec])=>{
       const q = sectorZariaQty(k);
@@ -2200,7 +2210,12 @@ function exportAllData() {
       const fcost = sectorZariaFeedCost(k);
       if(q === 0 && fkg === 0) return;
       totalZariaQty += q; totalZariaCost += c; totalZariaFeedKg += fkg; totalZariaFeedCost += fcost;
-      ws_data.push([sec.name, q.toLocaleString('ar-EG'), c>0?fmtCost(c):'-', fkg+' كجم', fcost>0?fmtCost(fcost):'-', 'ملخص القطاع']);
+      Object.values((state.sectors[k]||{}).zaria||{}).forEach(z=>{
+        ws_data.push([sec.name, z.fishType||'-', (z.qty||0).toLocaleString('ar-EG'), z.price>0?fmtCost(z.price):'-', z.date||'-', '-', '-', z.notes||'']);
+      });
+      Object.values((state.sectors[k]||{}).zariaFeed||{}).forEach(f=>{
+        ws_data.push([sec.name, 'علف زريعة', '-', '-', f.date||'-', f.weight+' كجم', f.cost>0?fmtCost(f.cost):'-', f.notes||'']);
+      });
     });
     ws_data.push(['📊 إجمالي حسابات الزريعة للكل',totalZariaQty.toLocaleString('ar-EG'),totalZariaCost>0?fmtCost(totalZariaCost):'-',totalZariaFeedKg+' كجم',totalZariaFeedCost>0?fmtCost(totalZariaFeedCost):'-','']);
     ws_data.push(['','','','','','']);
