@@ -370,7 +370,7 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
 .toast.ok{border-color:rgba(6,214,160,.5);}
 .toast.err{border-color:rgba(255,107,107,.5);}
 
-.ibox{background:rgba(0,180,216,.08);border:1px solid rgba(0,180,216,.2);border-radius:9px;padding:9px 13px;font-size:11px;color:var(--muted);line-height:1.75;margin-bottom:12px;}
+.ibox{background:rgba(0,180,216,.08);border:1px solid rgba(0,180,216,.2);border-radius:99px;padding:9px 13px;font-size:11px;color:var(--muted);line-height:1.75;margin-bottom:12px;}
 .ibox b{color:var(--cyan);}
 .ibox.warn{background:rgba(255,209,102,.07);border-color:rgba(255,209,102,.25);}
 .ibox.warn b{color:var(--gold);}
@@ -410,6 +410,7 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
 .harvest-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:6px;}
 .harvest-kpi{background:rgba(0,0,0,.2);border-radius:7px;padding:6px 8px;text-align:center;}
 .harvest-kpi .kv{font-size:12px;font-weight:900;}
+.harvest-kpi .kl">إيرادات التصريف</div></div>
 .harvest-kpi .kl{font-size:9px;color:var(--muted);margin-top:1px;}
 .harvest-pnl{display:flex;align-items:center;justify-content:space-between;border-radius:8px;padding:8px 12px;margin-top:4px;}
 .harvest-pnl.profit{background:var(--profit-bg);border:1px solid var(--profit-border);}
@@ -860,12 +861,12 @@ function buildSectorOptions(selectId, includeStore = false) {
   if (includeStore) {
     html += '<option value="all">كل القطاعات</option>';
     Object.entries(SECTORS).forEach(([k, s]) => {
-      html += `<option value="${k}">${s.icon} ${s.name}</option>`;
+      html += `<option value="${k}">${s.icon} ${s.name}</option>';
     });
     html += '<option value="store">المخزن</option>';
   } else {
     Object.entries(SECTORS).forEach(([k, s]) => {
-      html += `<option value="${k}">${s.icon} ${s.name}</option>`;
+      html += `<option value="${k}">${s.icon} ${s.name}</option>';
     });
   }
   el.innerHTML = html;
@@ -1050,6 +1051,78 @@ function sectorZariaQty(secKey){
   const z = (state.sectors[secKey]||{}).zaria || {};
   return Object.values(z).reduce((s,e)=> s+(e.qty||0), 0);
 }
+
+// ══════════════════════════════════════════════════════════════════
+// ✅ دوال حسابات وتغذية الزريعة المنفصلة تلقائياً
+// ══════════════════════════════════════════════════════════════════
+function sectorZariaFeedCost(secKey){
+  const zf = (state.sectors[secKey]||{}).zariaFeed || {};
+  return Object.values(zf).reduce((s,e)=> s+(e.cost||0), 0);
+}
+function sectorZariaFeedKg(secKey){
+  const zf = (state.sectors[secKey]||{}).zariaFeed || {};
+  return Object.values(zf).reduce((s,e)=> s+(e.weight||0), 0);
+}
+function toggleZariaFeedForm(k){
+  var f = document.getElementById('zariafeed-form-'+k);
+  if(f) f.style.display = f.style.display==='none' ? 'block' : 'none';
+}
+function toggleZariaFeedPage(k){
+  var f = document.getElementById('zariafeed-form-p-'+k);
+  if(f) f.style.display = f.style.display==='none' ? 'block' : 'none';
+}
+async function saveZariaFeed(k, isFromPage=false) {
+  const suffix = isFromPage ? 'p-'+k : k;
+  const weight = parseFloat(document.getElementById('zfw-weight-'+suffix).value);
+  const price  = parseFloat(document.getElementById('zfw-price-'+suffix).value)||0;
+  const notes  = document.getElementById('zfw-notes-'+suffix).value||'';
+  if(!weight || weight <= 0) return toast('❌ أدخل وزن علف صحيح بالكجم', 'err');
+  
+  const cost = weight * price;
+  const lr = window.dbPush(window.dbRef(db, 'sectors/' + k + '/zariaFeed'));
+  await window.dbSet(lr, {
+    weight,
+    price,
+    cost,
+    notes,
+    date: new Date().toISOString().split('T')[0],
+    ts: ts()
+  });
+  
+  document.getElementById('zfw-weight-'+suffix).value = '';
+  document.getElementById('zfw-price-'+suffix).value = '';
+  document.getElementById('zfw-notes-'+suffix).value = '';
+  document.getElementById('zariafeed-form-'+suffix).style.display = 'none';
+  toast('✅ تم تسجيل ' + weight + ' كجم علف زريعة منفصل بنجاح', 'ok');
+}
+async function delZariaFeed(secKey, zfid) {
+  if(!confirm('حذف هذا السجل من علف الزريعة؟')) return;
+  await window.dbRemove(window.dbRef(db, 'sectors/' + secKey + '/zariaFeed/' + zfid));
+  toast('🗑️ تم حذف علف الزريعة الكلي للعملية', 'ok');
+}
+function renderZariaFeedForm(k, isPage=false) {
+  const suffix = isPage ? 'p-'+k : k;
+  return `<div id="zariafeed-form-${suffix}" style="display:none;background:rgba(244,162,97,.05);border:1px solid rgba(244,162,97,.25);border-radius:9px;padding:11px;margin-top:8px;">
+    <div style="font-size:11px;font-weight:700;color:var(--feed-cost-color);margin-bottom:8px;">🍽️ إضافة علف منفصل للزريعة (بالكجم)</div>
+    <div style="margin-bottom:7px;">
+      <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px;">⚖️ وزن العلف (كجم) *</label>
+      <input id="zfw-weight-${suffix}" type="number" min="0.001" step="0.001" placeholder="مثال: 5" class="fc" style="width:100%;"/>
+    </div>
+    <div style="margin-bottom:7px;">
+      <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px;">💰 سعر الكجم بالجنيه (اختياري)</label>
+      <input id="zfw-price-${suffix}" type="number" min="0" step="0.01" placeholder="0.00" class="fc" style="width:100%;"/>
+    </div>
+    <div style="margin-bottom:9px;">
+      <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px;">📝 ملاحظات (اختياري)</label>
+      <input id="zfw-notes-${suffix}" type="text" placeholder="نوع العلف أو الملاحظات..." class="fc" style="width:100%;"/>
+    </div>
+    <div style="display:flex;gap:7px;">
+      <button class="btn btn-gold" style="flex:1;" onclick="saveZariaFeed('${k}', ${isPage})">✅ حفظ علف الزريعة</button>
+      <button class="btn btn-danger" style="flex:1;" onclick="${isPage ? 'toggleZariaFeedPage' : 'toggleZariaFeedForm'}('${k}')">❌ إلغاء</button>
+    </div>
+  </div>`;
+}
+
 function sectorPnL(secKey){
   const revenue   = sectorHarvestRevenue(secKey);
   const fishCost  = sectorTotalCost(secKey);
@@ -1374,6 +1447,12 @@ function renderZaria(k){
   const zariaList = Object.entries((state.sectors[k]||{}).zaria||{});
   const zariaQtyT  = zariaList.reduce(function(s,e){return s+(e[1].qty||0);},0);
   const zariaCostT = sectorZariaCost(k);
+  
+  // علف الزريعة المنفصل
+  const zariaFeedList = Object.entries((state.sectors[k]||{}).zariaFeed||{});
+  const zariaFeedKgT  = sectorZariaFeedKg(k);
+  const zariaFeedCostT = sectorZariaFeedCost(k);
+
   let h = '';
   if(zariaList.length===0){
     h += '<div style="font-size:11px;color:var(--muted);text-align:center;padding:4px 0 6px;">لا توجد زريعة</div>';
@@ -1388,13 +1467,39 @@ function renderZaria(k){
     }).join('');
     if(zariaQtyT>0){
       h += '<div style="background:rgba(0,229,255,.1);border:1px solid rgba(0,229,255,.25);border-radius:9px;padding:9px 13px;margin-top:6px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">'
-        +'<span style="font-size:11px;color:var(--muted);">📦 إجمالي الزريعة</span>'
+        +'<span style="font-size:11px;color:var(--muted);">📦 إجمالي الأسماك</span>'
         +'<span style="font-size:13px;font-weight:900;color:var(--cyan);">'+zariaQtyT.toLocaleString('ar-EG')+' قطعة</span>'
         +(zariaCostT>0?'<span style="font-size:12px;font-weight:800;color:var(--cost-color);">💰 '+fmtCost(zariaCostT)+' ج.م</span>':'')
         +'</div>';
     }
   }
-  // Inline form (hidden by default)
+  
+  // عرض تغذية الزريعة المنفصلة
+  h += '<div style="margin-top:10px;border-top:1px solid rgba(244,162,97,0.15);padding-top:8px;">';
+  h += '<div style="font-size:11px;font-weight:700;color:var(--feed-cost-color);margin-bottom:6px;">🌾 سجل استهلاك علف الزريعة المنفصل:</div>';
+  if(zariaFeedList.length === 0){
+    h += '<div style="font-size:10px;color:var(--muted);text-align:center;padding:2px 0;">لا يوجد استهلاك علف منفصل للزريعة</div>';
+  } else {
+    h += zariaFeedList.map(function([zfid, zf]){
+      return `<div class="zaria-item" style="border-color:rgba(244,162,97,0.2); background:rgba(0,0,0,0.15);">
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--feed-cost-color);">${zf.weight} كجم علف</div>
+          ${zf.price > 0 ? `<div style="font-size:9px;color:var(--muted);">سعر الكجم: ${zf.price} ج.م | الإجمالي: ${fmtCost(zf.cost)}</div>` : ''}
+          <div style="font-size:9px;color:var(--muted);">${fmtDate(zf.date)} ${zf.notes ? `· ${zf.notes}` : ''}</div>
+        </div>
+        <button class="b-del" onclick="delZariaFeed('${k}','${zfid}')">🗑️</button>
+      </div>`;
+    }).join('');
+    
+    h += `<div style="background:rgba(244,162,97,0.08);border:1px solid rgba(244,162,97,0.2);border-radius:8px;padding:6px 10px;margin-top:5px;display:flex;justify-content:space-between;font-size:11px;">
+      <span style="color:var(--muted);">إجمالي علف الزريعة:</span>
+      <span style="color:var(--feed-cost-color);font-weight:700;">${zariaFeedKgT} كجم</span>
+      ${zariaFeedCostT > 0 ? `<span style="color:var(--feed-cost-color);font-weight:700;">💰 ${fmtCost(zariaFeedCostT)}</span>` : ''}
+    </div>`;
+  }
+  h += '</div>';
+
+  // نماذج الإدخال المضمنة للزريعة والعلف
   h += '<div id="zaria-form-'+k+'" style="display:none;background:rgba(0,0,0,.25);border:1px solid rgba(0,229,255,.2);border-radius:9px;padding:11px;margin-top:8px;">'
     +'<div style="font-size:11px;font-weight:700;color:var(--cyan);margin-bottom:8px;">➕ إضافة زريعة جديدة</div>'
     +'<div style="margin-bottom:7px;">'
@@ -1414,6 +1519,8 @@ function renderZaria(k){
     +'<button class="btn btn-danger" style="flex:1;" data-sk="'+k+'" onclick="toggleZariaForm(this.dataset.sk)">❌ إلغاء</button>'
     +'</div>'
     +'</div>';
+
+  h += renderZariaFeedForm(k, false);
   return h;
 }
 
@@ -1421,63 +1528,91 @@ function renderZaria(k){
 function renderZariaPage(){
   let html = '';
   let grandTotalQty = 0, grandTotalCost = 0;
+  let grandTotalFeedKg = 0, grandTotalFeedCost = 0;
   let hasAny = false;
 
   Object.entries(SECTORS).forEach(function([k, sec]){
     const zariaList = Object.entries((state.sectors[k]||{}).zaria||{});
-    if(zariaList.length === 0) return;
+    const zariaFeedList = Object.entries((state.sectors[k]||{}).zariaFeed||{});
+    
+    if(zariaList.length === 0 && zariaFeedList.length === 0) return;
     hasAny = true;
+    
     const zariaQtyT  = zariaList.reduce(function(s,e){return s+(e[1].qty||0);},0);
     const zariaCostT = sectorZariaCost(k);
+    const zariaFeedKgT = sectorZariaFeedKg(k);
+    const zariaFeedCostT = sectorZariaFeedCost(k);
+    
     grandTotalQty  += zariaQtyT;
     grandTotalCost += zariaCostT;
+    grandTotalFeedKg += zariaFeedKgT;
+    grandTotalFeedCost += zariaFeedCostT;
 
     html += '<div class="sec-card" style="margin-bottom:12px;">';
     html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">';
     html += '<div class="sec-name"><div class="sec-ico" style="background:linear-gradient(135deg,'+sec.color+'22,'+sec.color+'11);">'+sec.icon+'</div>'+sec.name+'</div>';
-    html += '<div style="display:flex;gap:6px;align-items:center;">';
+    html += '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">';
     html += '<span style="background:rgba(0,229,255,.15);border:1px solid rgba(0,229,255,.3);border-radius:14px;padding:2px 10px;font-size:11px;color:var(--cyan);font-weight:700;">'+zariaQtyT.toLocaleString('ar-EG')+' قطعة</span>';
-    if(zariaCostT>0) html += '<span style="background:var(--cost-bg);border:1px solid var(--cost-border);border-radius:14px;padding:2px 10px;font-size:11px;color:var(--cost-color);font-weight:700;">'+fmtCost(zariaCostT)+' ج.م</span>';
+    if(zariaCostT>0) html += '<span style="background:var(--cost-bg);border:1px solid var(--cost-border);border-radius:14px;padding:2px 10px;font-size:11px;color:var(--cost-color);font-weight:700;">'+fmtCost(zariaCostT)+'</span>';
+    if(zariaFeedKgT>0) html += '<span style="background:var(--feed-cost-bg);border:1px solid var(--feed-cost-border);border-radius:14px;padding:2px 10px;font-size:11px;color:var(--feed-cost-color);font-weight:700;">🌾 '+zariaFeedKgT+' كجم</span>';
     html += '</div></div>';
 
-    zariaList.forEach(function(entry){
-      var zid=entry[0], z=entry[1];
-      html += '<div class="zaria-item" style="margin-bottom:5px;">';
-      html += '<div><div style="font-size:12px;font-weight:700;color:var(--cyan);">'+(z.qty||0).toLocaleString('ar-EG')+' قطعة</div>';
-      if(z.price>0) html += '<div style="font-size:10px;color:var(--muted);">'+fmtCost(z.price)+' ج.م/قطعة · إجمالي: '+fmtCost((z.qty||0)*z.price)+'</div>';
-      html += '<div style="font-size:10px;color:var(--muted);">'+fmtDate(z.date)+(z.notes?' · '+z.notes:'')+'</div></div>';
-      html += '<button class="b-del" data-sec="'+k+'" data-zid="'+zid+'" onclick="delZaria(this.dataset.sec,this.dataset.zid)">🗑️</button>';
-      html += '</div>';
-    });
+    if(zariaList.length > 0) {
+      html += '<div style="font-size:11px;font-weight:bold;color:var(--cyan);margin-bottom:4px;">🐟 كميات الزريعة المسجلة:</div>';
+      zariaList.forEach(function(entry){
+        var zid=entry[0], z=entry[1];
+        html += '<div class="zaria-item" style="margin-bottom:5px;">';
+        html += '<div><div style="font-size:12px;font-weight:700;color:var(--cyan);">'+(z.qty||0).toLocaleString('ar-EG')+' قطعة</div>';
+        if(z.price>0) html += '<div style="font-size:10px;color:var(--muted);">'+fmtCost(z.price)+' ج.م/قطعة · إجمالي: '+fmtCost((z.qty||0)*z.price)+'</div>';
+        html += '<div style="font-size:10px;color:var(--muted);">'+fmtDate(z.date)+(z.notes?' · '+z.notes:'')+'</div></div>';
+        html += '<button class="b-del" data-sec="'+k+'" data-zid="'+zid+'" onclick="delZaria(this.dataset.sec,this.dataset.zid)">🗑️</button>';
+        html += '</div>';
+      });
+    }
 
-    // inline add form per sector
-    var zf = renderZaria(k); zf = zf.replace(/id="zaria-form-[^"]+"/,'id="zaria-form-p-'+k+'"'); zf = zf.replace(/id="zf-qty-[^"]+"/g,'id="zf-qty-p-'+k+'"'); zf = zf.replace(/id="zf-price-[^"]+"/g,'id="zf-price-p-'+k+'"'); zf = zf.replace(/id="zf-notes-[^"]+"/g,'id="zf-notes-p-'+k+'"'); html += zf;
+    if(zariaFeedList.length > 0) {
+      html += '<div style="font-size:11px;font-weight:bold;color:var(--feed-cost-color);margin-top:10px;margin-bottom:4px;">🍽️ استهلاك العلف المنفصل:</div>';
+      zariaFeedList.forEach(function([zfid, zf]){
+        html += `<div class="zaria-item" style="margin-bottom:5px; background:rgba(0,0,0,0.15); border-color:rgba(244,162,97,0.2);">`;
+        html += `<div><div style="font-size:11px;font-weight:700;color:var(--feed-cost-color);">${zf.weight} كجم علف</div>`;
+        if(zf.price>0) html += `<div style="font-size:9px;color:var(--muted);">سعر الكجم: ${zf.price} ج.م | إجمالي: ${fmtCost(zf.cost)}</div>`;
+        html += `<div style="font-size:9px;color:var(--muted);">${fmtDate(zf.date)} ${zf.notes ? `· ${zf.notes}` : ''}</div></div>`;
+        html += `<button class="b-del" onclick="delZariaFeed('${k}','${zfid}')">🗑️</button>`;
+        html += '</div>';
+      });
+    }
+
+    // تصحيح النماذج لصفحة الزريعة المستقلة للقطاع
+    var zf = renderZaria(k); 
+    zf = zf.replace(/id="zaria-form-[^"]+"/,'id="zaria-form-p-'+k+'"'); 
+    zf = zf.replace(/id="zf-qty-[^"]+"/g,'id="zf-qty-p-'+k+'"'); 
+    zf = zf.replace(/id="zf-price-[^"]+"/g,'id="zf-price-p-'+k+'"'); 
+    zf = zf.replace(/id="zf-notes-[^"]+"/g,'id="zf-notes-p-'+k+'"'); 
+    html += zf;
 
     html += '<div style="display:flex;gap:7px;margin-top:8px;">';
-    html += '<button class="btn btn-zaria btn" style="flex:1;" data-sk="'+k+'" onclick="toggleZariaPage(this.dataset.sk)">🐟 إضافة زريعة لـ '+sec.name+'</button>';
+    html += '<button class="btn btn-zaria btn-sm" style="flex:1;" data-sk="'+k+'" onclick="toggleZariaPage(this.dataset.sk)">🐟 إضافة زريعة</button>';
+    html += '<button class="btn btn-gold btn-sm" style="flex:1; background:linear-gradient(135deg,#c97d20,var(--feed-cost-color)); color:var(--deep);" data-sk="'+k+'" onclick="toggleZariaFeedPage(this.dataset.sk)">🍽️ إضافة علف زريعة</button>';
     html += '</div>';
     html += '</div>';
   });
 
   if(!hasAny){
-    html = '<div class="empty"><div class="ei">🐟</div><p>لا توجد زريعة في أي قطاع حتى الآن</p></div>';
+    html = '<div class="empty"><div class="ei">🐟</div><p>لا توجد زريعة أو تغذية زريعة مسجلة في أي قطاع حتى الآن</p></div>';
   } else {
-    // Grand total card
+    // كارت الإجمالي الشامل لصفحة الزريعة
     html = '<div style="background:linear-gradient(135deg,rgba(0,229,255,.12),rgba(0,180,216,.08));border:1px solid rgba(0,229,255,.3);border-radius:var(--r);padding:15px;margin-bottom:14px;">'
-      + '<div style="font-size:13px;font-weight:700;color:var(--cyan);margin-bottom:10px;">📊 إجمالي الزريعة — كل القطاعات</div>'
+      + '<div style="font-size:13px;font-weight:700;color:var(--cyan);margin-bottom:10px;">📊 إجمالي الزريعة والتغذية المنفصلة الشاملة — كل القطاعات</div>'
       + '<div style="display:flex;gap:10px;flex-wrap:wrap;">'
-      + '<div class="sum-chip" style="background:rgba(0,229,255,.1);border-color:rgba(0,229,255,.3);"><div class="v" style="color:var(--cyan);">'+grandTotalQty.toLocaleString('ar-EG')+'</div><div class="l">إجمالي الزريعة (قطعة)</div></div>'
-      + (grandTotalCost>0?'<div class="sum-chip cost-chip"><div class="v">'+fmtCost(grandTotalCost)+'</div><div class="l">إجمالي التكلفة</div></div>':'')
+      + '<div class="sum-chip" style="background:rgba(0,229,255,.1);border-color:rgba(0,229,255,.3);"><div class="v" style="color:var(--cyan);">'+grandTotalQty.toLocaleString('ar-EG')+'</div><div class="l">إجمالي العدد (قطعة)</div></div>'
+      + (grandTotalCost>0?'<div class="sum-chip cost-chip"><div class="v">'+fmtCost(grandTotalCost)+'</div><div class="l">تكلفة شراء الزريعة</div></div>':'')
+      + '<div class="sum-chip" style="background:var(--feed-cost-bg);border-color:var(--feed-cost-border);"><div class="v" style="color:var(--feed-cost-color);">'+grandTotalFeedKg.toLocaleString('ar-EG')+' كجم</div><div class="l">إجمالي علف الزريعة الكلي</div></div>'
+      + (grandTotalFeedCost>0?'<div class="sum-chip" style="background:var(--feed-cost-bg);border-color:var(--feed-cost-border);"><div class="v" style="color:var(--feed-cost-color);">'+fmtCost(grandTotalFeedCost)+'</div><div class="l">تكلفة علف الزريعة</div></div>':'')
       + '</div></div>' + html;
   }
 
   const el = document.getElementById('zariaPageEl');
   if(el) el.innerHTML = html;
-}
-
-function toggleZariaPage(k){
-  var f = document.getElementById('zaria-form-p-'+k);
-  if(f) f.style.display = f.style.display==='none'?'block':'none';
 }
 
 function renderSectors(){
@@ -1555,9 +1690,10 @@ function renderSectors(){
         </div>
 
         <div class="zaria-card">
-          <div style="font-size:12px;font-weight:700;color:var(--cyan);margin-bottom:8px;">🐟 الزريعة (احتياطي — حسابات منفصلة)</div>
+          <div style="font-size:12px;font-weight:700;color:var(--cyan);margin-bottom:8px;">🐟 الزريعة وتغذيتها (منفصلة كلياً)</div>
           ${renderZaria(k)}
-          <button class="btn btn-zaria btn" style="margin-top:8px;" onclick="toggleZariaForm('${k}')">🐟 إضافة / عرض زريعة</button>
+          <button class="btn btn-zaria btn" style="margin-top:8px;" onclick="toggleZariaForm('${k}')">🐟 إضافة زريعة بالعدد</button>
+          <button class="btn btn-gold btn" style="margin-top:6px; background:linear-gradient(135deg,#c97d20,var(--feed-cost-color)); color:var(--deep);" onclick="toggleZariaFeedForm('${k}')">🍽️ إضافة علف منفصل للزريعة (كجم)</button>
         </div>
 
         <div style="display:flex; gap:7px; margin-top:7px;">
@@ -1940,20 +2076,16 @@ function applyExcelFormatting(ws, data) {
 
 function exportToFile(workbook, fileName) {
   try {
-    // محاولة استخدام XLSX.writeFile أولاً (الأفضل)
     XLSX.writeFile(workbook, fileName);
     toast('✅ تم تصدير البيانات بنجاح', 'ok');
   } catch (e) {
-    // احتياطي للأجهزة المحمولة
     try {
       const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
       const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       
       if (navigator.msSaveBlob) {
-        // IE 10+
         navigator.msSaveBlob(blob, fileName);
       } else {
-        // جميع المتصفحات الأخرى (Chrome, Firefox, Safari, Edge)
         const link = document.createElement('a');
         const url = URL.createObjectURL(blob);
         link.href = url;
@@ -1972,7 +2104,7 @@ function exportToFile(workbook, fileName) {
 }
 
 // ══════════════════════════════════════════════════════════════════
-// ✅ دوال التصدير بصيغة Excel الحقيقية (لحل مشكلة الهواتف)
+// ✅ دوال التصدير بصيغة Excel الشاملة
 // ══════════════════════════════════════════════════════════════════
 
 function exportAllData() {
@@ -1989,7 +2121,6 @@ function exportAllData() {
 
   const ws_data = [];
 
-  // ── قسم 1: الإحصائيات الرئيسية ──────────────────────
   ws_data.push(['📊 إحصائيات المزرعة الرئيسية','','','','','']);
   ws_data.push(['إجمالي الأسماك','إجمالي العلف','تكلفة الأسماك','تكلفة العلف','إيرادات البيع','صافي الربح / الخسارة']);
   ws_data.push([
@@ -2002,7 +2133,6 @@ function exportAllData() {
   ]);
   ws_data.push(['','','','','','']);
 
-  // ── قسم 2: الربح والخسارة لكل قطاع ─────────────────
   ws_data.push(['📈 الربح والخسارة لكل قطاع','','','','','','']);
   ws_data.push(['القطاع','تكلفة الأسماك','تكلفة العلف','مصروفات إضافية','التكلفة الكلية','إيرادات المبيعات','صافي القطاع']);
   let sumFishC=0,sumFeedC=0,sumExtraC=0,sumTotalC=0,sumRev=0,sumNet=0;
@@ -2032,7 +2162,6 @@ function exportAllData() {
   ]);
   ws_data.push(['','','','','','','']);
 
-  // ── قسم 3: المصروفات الإضافية ───────────────────────
   let hasExtras=false;
   Object.entries(SECTORS).forEach(([k,sec])=>{
     const extras=Object.values((state.sectors[k]||{}).extras||{});
@@ -2053,27 +2182,25 @@ function exportAllData() {
     ws_data.push(['','','','']);
   }
 
-  // ── قسم 4: الزريعة ──────────────────────────────────
   let hasZaria=false;
-  Object.keys(SECTORS).forEach(k=>{ if(Object.keys((state.sectors[k]||{}).zaria||{}).length>0) hasZaria=true; });
+  Object.keys(SECTORS).forEach(k=>{ if(Object.keys((state.sectors[k]||{}).zaria||{}).length>0 || Object.keys((state.sectors[k]||{}).zariaFeed||{}).length>0) hasZaria=true; });
   if(hasZaria){
-    ws_data.push(['🐟 الزريعة بالقطاعات (حسابات منفصلة)','','','','']);
-    ws_data.push(['القطاع','الكمية (عدد)','السعر/قطعة','إجمالي التكلفة','التاريخ','ملاحظات']);
-    let totalZariaQty=0, totalZariaCost=0;
+    ws_data.push(['🐟 الزريعة وتغذيتها بالقطاعات (منفصلة تماماً)','','','','','']);
+    ws_data.push(['القطاع','الكمية (عدد)','تكلفة الشراء الأصلية','إجمالي وزن العلف الكلي (كجم)','إجمالي تكلفة العلف المنفصل','ملاحظات']);
+    let totalZariaQty=0, totalZariaCost=0, totalZariaFeedKg=0, totalZariaFeedCost=0;
     Object.entries(SECTORS).forEach(([k,sec])=>{
-      const zariaList=Object.values((state.sectors[k]||{}).zaria||{});
-      zariaList.forEach(z=>{
-        totalZariaQty+=(z.qty||0);
-        const zc=(z.qty||0)*(z.price||0);
-        totalZariaCost+=zc;
-        ws_data.push([sec.name,(z.qty||0).toLocaleString('ar-EG'),z.price>0?fmtCost(z.price)+' ج.م':'-',zc>0?fmtCost(zc)+' ج.م':'-',fmtDate(z.date),z.notes||'']);
-      });
+      const q = sectorZariaQty(k);
+      const c = sectorZariaCost(k);
+      const fkg = sectorZariaFeedKg(k);
+      const fcost = sectorZariaFeedCost(k);
+      if(q === 0 && fkg === 0) return;
+      totalZariaQty += q; totalZariaCost += c; totalZariaFeedKg += fkg; totalZariaFeedCost += fcost;
+      ws_data.push([sec.name, q.toLocaleString('ar-EG'), c>0?fmtCost(c):'-', fkg+' كجم', fcost>0?fmtCost(fcost):'-', 'ملخص القطاع']);
     });
-    ws_data.push(['📊 إجمالي الزريعة',totalZariaQty.toLocaleString('ar-EG'),'',totalZariaCost>0?fmtCost(totalZariaCost)+' ج.م':'-','','']);
+    ws_data.push(['📊 إجمالي حسابات الزريعة للكل',totalZariaQty.toLocaleString('ar-EG'),totalZariaCost>0?fmtCost(totalZariaCost):'-',totalZariaFeedKg+' كجم',totalZariaFeedCost>0?fmtCost(totalZariaFeedCost):'-','']);
     ws_data.push(['','','','','','']);
   }
 
-  // ── قسم 5: بيانات الأسماك ───────────────────────────
   ws_data.push(['🐟 بيانات الأسماك الحالية بالقطاعات','','','','','','']);
   ws_data.push(['القطاع','النوع','الكمية','الوحدة','سعر الشراء','الإجمالي','التاريخ','ملاحظات']);
   let sumFishQty=0,sumFishCostAll=0;
@@ -2090,7 +2217,6 @@ function exportAllData() {
   ws_data.push(['📊 إجمالي الأسماك','',sumFishQty.toLocaleString('ar-EG'),'','',sumFishCostAll.toLocaleString('ar-EG')+' ج.م','','']);
   ws_data.push(['','','','','','','','']);
 
-  // ── قسم 6: المخزن ───────────────────────────────────
   ws_data.push(['🏭 رصيد المخزن الحالي','','','','','']);
   ws_data.push(['نوع العلف','الطفو/الغاطس','شكارة 25 كجم','شكارة 50 كجم','طن','إجمالي (كجم)']);
   let sumB25=0,sumB50=0,sumTon=0,sumKg=0;
@@ -2106,8 +2232,7 @@ function exportAllData() {
   ws_data.push(['📊 إجمالي المخزن','',sumB25,sumB50,sumTon,sumKg.toFixed(1)+' كجم']);
   ws_data.push(['','','','','','']);
 
-  // ── قسم 7: عمليات التصريف ───────────────────────────
-  const harvestLogs=Object.values(state.logs||{}).filter(l=>l&&l.type==='fish_out').sort((a,b)=>(b.ts||0)-(a.ts||0));
+  const harvestLogs=Object.values(state.logs||{}).filter(l=>l&&l.type==='fish_out').sort((a,b)=>(b[1].ts||0)-(a[1].ts||0));
   if(harvestLogs.length>0){
     ws_data.push(['💰 عمليات التصريف (المبيعات)','','','','']);
     ws_data.push(['القطاع','النوع','الكمية','الإيراد','التاريخ','ملاحظات']);
@@ -2135,7 +2260,6 @@ function exportSectorData(secKey) {
   const p = sectorPnL(secKey);
   const ws_data = [];
 
-  // ── قسم 1: التقرير المالي ───────────────────────────
   ws_data.push([`📊 التقرير المالي لـ: ${secName}`,'','','','']);
   ws_data.push(['تكلفة الأسماك','تكلفة العلف','مصروفات إضافية','التكلفة الكلية','إيرادات المبيعات','الربح / الخسارة']);
   ws_data.push([
@@ -2148,7 +2272,6 @@ function exportSectorData(secKey) {
   ]);
   ws_data.push(['','','','','','']);
 
-  // ── قسم 2: المصروفات الإضافية ───────────────────────
   const extras = Object.values((state.sectors[secKey]||{}).extras||{});
   if(extras.length>0){
     ws_data.push([`💸 المصروفات الإضافية لـ ${secName}`,'','']);
@@ -2159,7 +2282,6 @@ function exportSectorData(secKey) {
     ws_data.push(['','','']);
   }
 
-  // ── قسم 3: الأسماك ──────────────────────────────────
   ws_data.push([`🐟 الأسماك الحالية في ${secName}`,'','','','','']);
   ws_data.push(['النوع','الكمية','الوحدة','سعر الشراء','الإجمالي','التاريخ','ملاحظات']);
   const fishData = state.sectors[secKey]?.fish||{};
@@ -2174,7 +2296,6 @@ function exportSectorData(secKey) {
   if(sumFishQty>0) ws_data.push(['📊 إجمالي الأسماك',sumFishQty.toLocaleString('ar-EG'),'','',sumFishCost>0?sumFishCost.toLocaleString('ar-EG')+' ج.م':'-','','']);
   ws_data.push(['','','','','','','']);
 
-  // ── قسم 4: الزريعة ──────────────────────────────────
   const zariaList = Object.values((state.sectors[secKey]||{}).zaria||{});
   if(zariaList.length>0){
     ws_data.push([`🐟 الزريعة في ${secName} (حسابات منفصلة)`,'','','','']);
@@ -2188,10 +2309,9 @@ function exportSectorData(secKey) {
     ws_data.push(['','','','','']);
   }
 
-  // ── قسم 5: سجل عمليات القطاع ────────────────────────
   ws_data.push([`📋 سجل عمليات ${secName}`,'','','','']);
   ws_data.push(['العملية','التفاصيل','التأثير المالي','التاريخ','ملاحظات']);
-  const secLogs = Object.values(state.logs||{}).filter(l=>l&&l.sector===secKey).sort((a,b)=>(b.ts||0)-(a.ts||0));
+  const secLogs = Object.values(state.logs||{}).filter(l=>l&&l.sector===secKey).sort((a,b)=>(b[1].ts||0)-(a[1].ts||0));
   let sumLogCost=0;
   secLogs.forEach(l=>{
     let typeName = l.type==='feed_out'?'🍽️ إخراج علف':l.type==='fish_in'?'🐟 إضافة سمك':l.type==='fish_out'?'🐠 بيع سمك':'أخرى';
@@ -2210,39 +2330,35 @@ function exportSectorData(secKey) {
   toast(`✅ تم تصدير تقرير ${secName}`,'ok');
 }
 
+// ══════════════════════════════════════════
+//  Reset Functions
+// ══════════════════════════════════════════
+async function resetSectorData(secKey) {
+  if (!confirm('⚠️ هل أنت متأكد من إعادة تعيين بيانات هذا الحوض؟ سيتم حذف الأسماك والزريعة والمصروفات وعلف الزريعة والسجلات المرتبطة به.')) return;
+  const updates = {};
+  updates['sectors/' + secKey + '/fish']   = null;
+  updates['sectors/' + secKey + '/extras'] = null;
+  updates['sectors/' + secKey + '/zaria']  = null;
+  updates['sectors/' + secKey + '/zariaFeed'] = null;
+  Object.entries(state.logs || {})
+    .filter(([, l]) => l.sector === secKey)
+    .forEach(([id]) => { updates['logs/' + id] = null; });
+  await window.dbUpdate(window.dbRef(db, '/'), updates);
+  toast('🗑️ تم إعادة تعيين بيانات الحوض', 'ok');
+}
 
-
+async function resetAllProgramData() {
+  if (!confirm('⚠️ تحذير: سيتم حذف جميع البيانات (الأسماك، العلف، السجلات، الزريعة وعلفها). هل أنت متأكد؟')) return;
+  if (!confirm('⚠️ تأكيد نهائي: لا يمكن التراجع عن هذه العملية. متأكد تماماً؟')) return;
+  await window.dbSet(window.dbRef(db, 'sectors'), null);
+  await window.dbSet(window.dbRef(db, 'store'),   null);
+  await window.dbSet(window.dbRef(db, 'logs'),    null);
+  toast('🗑️ تم حذف جميع البيانات بنجاح', 'ok');
+}
 
 // ══════════════════════════════════════════════════════
 // expose to global scope for inline HTML onclick handlers
 // ══════════════════════════════════════════════════════
-
-  // ══════════════════════════════════════════
-  //  Reset Functions
-  // ══════════════════════════════════════════
-  async function resetSectorData(secKey) {
-    if (!confirm('⚠️ هل أنت متأكد من إعادة تعيين بيانات هذا الحوض؟ سيتم حذف الأسماك والزريعة والمصروفات والسجلات المرتبطة به.')) return;
-    const updates = {};
-    updates['sectors/' + secKey + '/fish']   = null;
-    updates['sectors/' + secKey + '/extras'] = null;
-    updates['sectors/' + secKey + '/zaria']  = null;
-    // حذف السجلات المرتبطة بهذا الحوض
-    Object.entries(state.logs || {})
-      .filter(([, l]) => l.sector === secKey)
-      .forEach(([id]) => { updates['logs/' + id] = null; });
-    await window.dbUpdate(window.dbRef(db, '/'), updates);
-    toast('🗑️ تم إعادة تعيين بيانات الحوض', 'ok');
-  }
-
-  async function resetAllProgramData() {
-    if (!confirm('⚠️ تحذير: سيتم حذف جميع البيانات (الأسماك، العلف، السجلات، الزريعة). هل أنت متأكد؟')) return;
-    if (!confirm('⚠️ تأكيد نهائي: لا يمكن التراجع عن هذه العملية. متأكد تماماً؟')) return;
-    await window.dbSet(window.dbRef(db, 'sectors'), null);
-    await window.dbSet(window.dbRef(db, 'store'),   null);
-    await window.dbSet(window.dbRef(db, 'logs'),    null);
-    toast('🗑️ تم حذف جميع البيانات بنجاح', 'ok');
-  }
-
 window.pinKey          = typeof pinKey          !== 'undefined' ? pinKey          : window.pinKey;
 window.pinClear        = typeof pinClear        !== 'undefined' ? pinClear        : window.pinClear;
 window.pinDel          = typeof pinDel          !== 'undefined' ? pinDel          : window.pinDel;
@@ -2253,13 +2369,17 @@ window.toggleZariaPage = toggleZariaPage;
 window.addExtraExpense = addExtraExpense;
 window.delExtraExpense = delExtraExpense;
 window.addZaria        = addZaria;
-window.delZaria        = delZaria;
+window.delZaria             = delZaria;
+window.sectorZariaFeedCost  = sectorZariaFeedCost;
+window.sectorZariaFeedKg    = sectorZariaFeedKg;
+window.toggleZariaFeedForm  = toggleZariaFeedForm;
+window.saveZariaFeed        = saveZariaFeed;
+window.delZariaFeed         = delZariaFeed;
+window.toggleZariaFeedPage  = toggleZariaFeedPage;
+window.renderZariaFeedForm  = renderZariaFeedForm;
 window.renderZariaPage = renderZariaPage;
 window.openHarvest     = typeof openHarvest     !== 'undefined' ? openHarvest     : window.openHarvest;
 window.exportSectorData= typeof exportSectorData!== 'undefined' ? exportSectorData: window.exportSectorData;
-window.resetSectorData     = typeof resetSectorData     !== 'undefined' ? resetSectorData     : window.resetSectorData;
-  window.resetAllProgramData = typeof resetAllProgramData !== 'undefined' ? resetAllProgramData : window.resetAllProgramData;
-
 window.resetSectorData     = resetSectorData;
 window.resetAllProgramData = resetAllProgramData;
 </script>
