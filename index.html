@@ -759,7 +759,15 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
       <select class="fc" id="efl-sec"></select>
     </div>
     
-    <div class="fg"><label class="fl">الكمية المُخرجة (كجم)</label><input class="fc" type="number" id="efl-qty" min="0" step="0.001"></div>
+    <div class="fg"><label class="fl">الكمية المُخرجة (كجم)</label><input class="fc" type="number" id="efl-qty" min="0" step="0.001" oninput="calcEflCostPreview()"></div>
+    <div class="fg" style="margin-top:2px;">
+      <label class="fl" style="color:var(--feed-cost-color)">💰 السعر الكلي <span style="font-size:10px;color:var(--muted)" id="efl-price-per-kg"></span></label>
+      <div style="position:relative;">
+        <input class="fc" type="number" id="efl-feedcost" min="0" step="0.01" placeholder="0.00" oninput="calcEflCostPreview()" style="border-color:var(--feed-cost-color);padding-left:46px;">
+        <span style="position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:12px;font-weight:700;color:var(--feed-cost-color);pointer-events:none;">ج.م</span>
+      </div>
+      <div id="efl-cost-preview" style="font-size:11px;color:var(--feed-cost-color);margin-top:4px;min-height:16px;"></div>
+    </div>
     <div class="fg"><label class="fl">التاريخ</label><input class="fc" type="date" id="efl-date"></div>
     <div class="fg"><label class="fl">ملاحظات</label><input class="fc" type="text" id="efl-notes"></div>
     <div style="display:flex;gap:9px;">
@@ -1127,11 +1135,27 @@ function zfwStockInfo(suffix){
   }
   infoEl.innerHTML = msg;
 }
+function zfwPricePreview(suffix){
+  const raw=parseFloat(document.getElementById('zfw-weight-'+suffix)?.value)||0;
+  const unit=zfwGetUnit(suffix);
+  const price=parseFloat(document.getElementById('zfw-price-'+suffix)?.value)||0;
+  const prev=document.getElementById('zfw-price-preview-'+suffix);
+  if(!prev) return;
+  if(price>0){
+    const weightKg=zfwToKg(raw||1,unit);
+    const perKg=raw>0?(price/weightKg).toFixed(2):0;
+    prev.innerHTML=`<b>${price.toLocaleString('ar-EG',{minimumFractionDigits:2,maximumFractionDigits:2})} ج.م</b>${raw>0?' — '+perKg+' ج.م/كجم':''}`;
+  } else {
+    prev.innerHTML='';
+  }
+}
+
 
 async function saveZariaFeed(k, isFromPage=false) {
   const suffix   = isFromPage ? 'p-'+k : k;
   const raw      = parseFloat(document.getElementById('zfw-weight-'+suffix).value);
   const unit     = zfwGetUnit(suffix);
+  const price    = parseFloat(document.getElementById('zfw-price-'+suffix)?.value)||0;
   const notes    = document.getElementById('zfw-notes-'+suffix).value||'';
   const dateEl   = document.getElementById('zfw-date-'+suffix);
   const date     = dateEl ? dateEl.value : new Date().toISOString().split('T')[0];
@@ -1157,18 +1181,20 @@ async function saveZariaFeed(k, isFromPage=false) {
   // حفظ سجل علف الزريعة
   const unitLabel = unit==='bag25'?`${raw} شيكارة 25كجم` : unit==='ton'?`${raw} طن` : `${weightKg} كجم`;
   const lr = window.dbPush(window.dbRef(db, 'sectors/' + k + '/zariaFeed'));
-  await window.dbSet(lr, { weight: weightKg, rawVal: raw, unit, feedType, float, cost: 0, notes, date, ts: ts() });
+  await window.dbSet(lr, { weight: weightKg, rawVal: raw, unit, feedType, float, cost: price, notes, date, ts: ts() });
 
   // إضافة للسجل العام
   const logRef = window.dbPush(window.dbRef(db, 'logs'));
   await window.dbSet(logRef, {
     type: 'feed_out', feedType, float, qty: weightKg,
     qtyLabel: unitLabel + ' (زريعة)', remLabel: fmtStock(newStock),
-    sector: k, date, notes: 'علف زريعة | ' + (notes||''), ts: ts(), feedUnit: unit, feedCost: 0
+    sector: k, date, notes: 'علف زريعة | ' + (notes||''), ts: ts(), feedUnit: unit, feedCost: price
   });
 
   document.getElementById('zfw-weight-'+suffix).value = '';
   document.getElementById('zfw-notes-'+suffix).value  = '';
+  const priceEl=document.getElementById('zfw-price-'+suffix); if(priceEl) priceEl.value='';
+  const prevEl=document.getElementById('zfw-price-preview-'+suffix); if(prevEl) prevEl.innerHTML='';
   const formEl = document.getElementById('zariafeed-form-'+suffix);
   if(formEl) formEl.style.display = 'none';
   toast(`✅ تم خصم ${unitLabel} (علف ${feedType}% ${float==='float'?'🌊 عايم':'⬇️ غاطس'}) من المخزن وتسجيله للزريعة`, 'ok');
@@ -1209,11 +1235,19 @@ function renderZariaFeedForm(k, isPage=false) {
         <button id="zfw-ukg-${suffix}"  class="btn"        style="flex:1;font-size:10px;padding:5px;" onclick="zfwSetUnit('${suffix}','kg')">🔢 كجم</button>
       </div>
       <label id="zfw-qty-lbl-${suffix}" style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px;">العدد (شيكارة 25 كجم) *</label>
-      <input id="zfw-weight-${suffix}" type="number" min="0.001" step="1" placeholder="مثال: 2" class="fc" style="width:100%;" oninput="zfwStockInfo('${suffix}')"/>
+      <input id="zfw-weight-${suffix}" type="number" min="0.001" step="1" placeholder="مثال: 2" class="fc" style="width:100%;" oninput="zfwStockInfo('${suffix}');zfwPricePreview('${suffix}')"/>
     </div>
     <div style="margin-bottom:7px;">
       <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px;">📅 تاريخ إضافة العلف *</label>
       <input id="zfw-date-${suffix}" type="date" class="fc" style="width:100%;" value="${today}"/>
+    </div>
+    <div style="margin-bottom:7px;">
+      <label style="display:block;font-size:11px;color:var(--feed-cost-color);margin-bottom:4px;">💰 سعر العلف الكلي (اختياري)</label>
+      <div style="position:relative;">
+        <input id="zfw-price-${suffix}" type="number" min="0" step="0.01" placeholder="0.00" class="fc" style="width:100%;border-color:var(--feed-cost-color);padding-left:46px;" oninput="zfwPricePreview('${suffix}')"/>
+        <span style="position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:12px;font-weight:700;color:var(--feed-cost-color);pointer-events:none;">ج.م</span>
+      </div>
+      <div id="zfw-price-preview-${suffix}" style="font-size:11px;color:var(--feed-cost-color);margin-top:4px;min-height:16px;"></div>
     </div>
     <div style="margin-bottom:9px;">
       <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px;">📝 ملاحظات (اختياري)</label>
@@ -2023,8 +2057,14 @@ async function delFish(sec,fid){ if(!confirm('حذف هذا السجل؟')) retu
 
 function openEditFeedLog(lid){
   const l=state.logs[lid]; if(!l) return;
-  document.getElementById('efl-id').value=lid; document.getElementById('efl-ftype').value=l.feedType; document.getElementById('efl-sec').value=l.sector||'sector1';
-  document.getElementById('efl-qty').value=l.qty; document.getElementById('efl-date').value=l.date||''; document.getElementById('efl-notes').value=l.notes||'';
+  document.getElementById('efl-id').value=lid;
+  document.getElementById('efl-ftype').value=l.feedType;
+  document.getElementById('efl-sec').value=l.sector||'sector1';
+  document.getElementById('efl-qty').value=l.qty;
+  document.getElementById('efl-feedcost').value=l.feedCost||'';
+  document.getElementById('efl-date').value=l.date||'';
+  document.getElementById('efl-notes').value=l.notes||'';
+  calcEflCostPreview();
   oModal('mo-flog');
 }
 async function saveEditFeedLog(){
@@ -2048,15 +2088,33 @@ async function saveEditFeedLog(){
     newStock.ton=Math.max(0,newStock.ton||0);
     await window.dbUpdate(window.dbRef(db,'store/'+key),newStock);
   }
+  const newFeedCost=parseFloat(document.getElementById('efl-feedcost').value)||0;
   await window.dbUpdate(window.dbRef(db,`logs/${lid}`),{
     feedType:document.getElementById('efl-ftype').value,
     sector:document.getElementById('efl-sec').value,
     qty:newQty,
+    feedCost:newFeedCost,
     date:document.getElementById('efl-date').value,
     notes:document.getElementById('efl-notes').value
   });
   cModal('mo-flog'); toast('✅ تم التعديل وتحديث المخزن','ok');
 }
+function calcEflCostPreview(){
+  const qty=parseFloat(document.getElementById('efl-qty').value)||0;
+  const cost=parseFloat(document.getElementById('efl-feedcost').value)||0;
+  const preview=document.getElementById('efl-cost-preview');
+  const perKgLbl=document.getElementById('efl-price-per-kg');
+  if(!preview) return;
+  if(qty>0 && cost>0){
+    const perKg=(cost/qty).toFixed(2);
+    preview.innerHTML=`<b>${cost.toLocaleString('ar-EG',{minimumFractionDigits:2,maximumFractionDigits:2})} ج.م</b> — ${qty.toLocaleString('ar-EG')} كجم`;
+    if(perKgLbl) perKgLbl.textContent=`(${perKg} ج.م/كجم)`;
+  } else {
+    preview.innerHTML='';
+    if(perKgLbl) perKgLbl.textContent='';
+  }
+}
+
 
 function openEditStoreLog(lid) {
   const l = state.logs[lid];
