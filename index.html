@@ -1103,6 +1103,7 @@ function zfwSetUnit(suffix, unit){
   else if(unit==='ton'){ if(lbl) lbl.textContent='الكمية بالطن *'; if(input){ input.step='0.001'; input.placeholder='مثال: 0.5'; } }
   else { if(lbl) lbl.textContent='الكمية بالكجم *'; if(input){ input.step='0.001'; input.placeholder='مثال: 12.5'; } }
   zfwStockInfo(suffix);
+  zfwUpdatePriceLbl(suffix);
 }
 function zfwGetUnit(suffix){
   const tonEl = document.getElementById('zfw-uton-'+suffix);
@@ -1135,16 +1136,59 @@ function zfwStockInfo(suffix){
   }
   infoEl.innerHTML = msg;
 }
+function zfwSetPriceMode(suffix, mode){
+  const btnUnit=document.getElementById('zfw-pmode-unit-'+suffix);
+  const btnTotal=document.getElementById('zfw-pmode-total-'+suffix);
+  if(btnUnit) btnUnit.classList.toggle('active', mode==='unit');
+  if(btnTotal) btnTotal.classList.toggle('active', mode==='total');
+  // store mode on element
+  const inp=document.getElementById('zfw-price-'+suffix);
+  if(inp) inp.dataset.pmode=mode;
+  zfwUpdatePriceLbl(suffix);
+  zfwPricePreview(suffix);
+}
+function zfwUpdatePriceLbl(suffix){
+  const unit=zfwGetUnit(suffix);
+  const inp=document.getElementById('zfw-price-'+suffix);
+  const mode=inp?.dataset.pmode||'unit';
+  const lbl=document.getElementById('zfw-price-lbl-'+suffix);
+  if(!lbl) return;
+  if(mode==='total'){
+    lbl.textContent='السعر الإجمالي الكلي (ج.م)';
+  } else {
+    const names={bag25:'الشيكارة 25 كجم',bag50:'الشيكارة 50 كجم',ton:'الطن',kg:'الكيلوجرام'};
+    lbl.textContent='سعر '+( names[unit]||'الوحدة')+' (ج.م)';
+  }
+}
+function zfwGetTotalPrice(suffix){
+  const raw=parseFloat(document.getElementById('zfw-weight-'+suffix)?.value)||0;
+  const unit=zfwGetUnit(suffix);
+  const price=parseFloat(document.getElementById('zfw-price-'+suffix)?.value)||0;
+  if(!price) return 0;
+  const inp=document.getElementById('zfw-price-'+suffix);
+  const mode=inp?.dataset.pmode||'unit';
+  if(mode==='total') return price;
+  // unit price => multiply by quantity
+  if(unit==='bag25') return price * raw;
+  if(unit==='bag50') return price * raw;
+  if(unit==='ton')   return price * raw;
+  if(unit==='kg')    return price * raw;
+  return price * raw;
+}
 function zfwPricePreview(suffix){
   const raw=parseFloat(document.getElementById('zfw-weight-'+suffix)?.value)||0;
   const unit=zfwGetUnit(suffix);
   const price=parseFloat(document.getElementById('zfw-price-'+suffix)?.value)||0;
   const prev=document.getElementById('zfw-price-preview-'+suffix);
   if(!prev) return;
-  if(price>0){
-    const weightKg=zfwToKg(raw||1,unit);
-    const perKg=raw>0?(price/weightKg).toFixed(2):0;
-    prev.innerHTML=`<b>${price.toLocaleString('ar-EG',{minimumFractionDigits:2,maximumFractionDigits:2})} ج.م</b>${raw>0?' — '+perKg+' ج.م/كجم':''}`;
+  zfwUpdatePriceLbl(suffix);
+  if(price>0 && raw>0){
+    const totalPrice=zfwGetTotalPrice(suffix);
+    const weightKg=zfwToKg(raw,unit);
+    const perKg=weightKg>0?(totalPrice/weightKg).toFixed(2):0;
+    prev.innerHTML=`💰 إجمالي: <b>${totalPrice.toLocaleString('ar-EG',{minimumFractionDigits:2,maximumFractionDigits:2})} ج.م</b> — <span style='color:var(--muted)'>${perKg} ج.م/كجم</span>`;
+  } else if(price>0){
+    prev.innerHTML=`<span style='color:var(--muted)'>أدخل الكمية لحساب الإجمالي</span>`;
   } else {
     prev.innerHTML='';
   }
@@ -1155,7 +1199,7 @@ async function saveZariaFeed(k, isFromPage=false) {
   const suffix   = isFromPage ? 'p-'+k : k;
   const raw      = parseFloat(document.getElementById('zfw-weight-'+suffix).value);
   const unit     = zfwGetUnit(suffix);
-  const price    = parseFloat(document.getElementById('zfw-price-'+suffix)?.value)||0;
+  const price    = zfwGetTotalPrice(suffix);
   const notes    = document.getElementById('zfw-notes-'+suffix).value||'';
   const dateEl   = document.getElementById('zfw-date-'+suffix);
   const date     = dateEl ? dateEl.value : new Date().toISOString().split('T')[0];
@@ -1193,8 +1237,11 @@ async function saveZariaFeed(k, isFromPage=false) {
 
   document.getElementById('zfw-weight-'+suffix).value = '';
   document.getElementById('zfw-notes-'+suffix).value  = '';
-  const priceEl=document.getElementById('zfw-price-'+suffix); if(priceEl) priceEl.value='';
+  const priceEl=document.getElementById('zfw-price-'+suffix); if(priceEl){ priceEl.value=''; priceEl.dataset.pmode='unit'; }
   const prevEl=document.getElementById('zfw-price-preview-'+suffix); if(prevEl) prevEl.innerHTML='';
+  // reset price mode buttons
+  const btnU=document.getElementById('zfw-pmode-unit-'+suffix); if(btnU) btnU.classList.add('active');
+  const btnT=document.getElementById('zfw-pmode-total-'+suffix); if(btnT) btnT.classList.remove('active');
   const formEl = document.getElementById('zariafeed-form-'+suffix);
   if(formEl) formEl.style.display = 'none';
   toast(`✅ تم خصم ${unitLabel} (علف ${feedType}% ${float==='float'?'🌊 عايم':'⬇️ غاطس'}) من المخزن وتسجيله للزريعة`, 'ok');
@@ -1242,7 +1289,12 @@ function renderZariaFeedForm(k, isPage=false) {
       <input id="zfw-date-${suffix}" type="date" class="fc" style="width:100%;" value="${today}"/>
     </div>
     <div style="margin-bottom:7px;">
-      <label style="display:block;font-size:11px;color:var(--feed-cost-color);margin-bottom:4px;">💰 سعر العلف الكلي (اختياري)</label>
+      <label style="display:block;font-size:11px;color:var(--feed-cost-color);margin-bottom:4px;">💰 السعر (اختياري)</label>
+      <div style="display:flex;gap:6px;margin-bottom:6px;">
+        <button id="zfw-pmode-unit-${suffix}" class="btn active" style="flex:1;font-size:10px;padding:5px;" onclick="zfwSetPriceMode('${suffix}','unit')">💰 سعر الوحدة</button>
+        <button id="zfw-pmode-total-${suffix}" class="btn" style="flex:1;font-size:10px;padding:5px;" onclick="zfwSetPriceMode('${suffix}','total')">🧾 السعر الإجمالي</button>
+      </div>
+      <label id="zfw-price-lbl-${suffix}" style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px;">سعر الشيكارة 25 كجم (ج.م)</label>
       <div style="position:relative;">
         <input id="zfw-price-${suffix}" type="number" min="0" step="0.01" placeholder="0.00" class="fc" style="width:100%;border-color:var(--feed-cost-color);padding-left:46px;" oninput="zfwPricePreview('${suffix}')"/>
         <span style="position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:12px;font-weight:700;color:var(--feed-cost-color);pointer-events:none;">ج.م</span>
