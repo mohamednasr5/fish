@@ -758,7 +758,7 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
     <div class="fg"><label class="fl">القطاع</label>
       <select class="fc" id="efl-sec"></select>
     </div>
-    <div class="ibox warn" style="margin-bottom:12px;">⚠️ تعديل السجل لا يُعيد حساب رصيد المخزن تلقائياً — عدّل المخزن يدوياً إن لزم</div>
+    
     <div class="fg"><label class="fl">الكمية المُخرجة (كجم)</label><input class="fc" type="number" id="efl-qty" min="0" step="0.001"></div>
     <div class="fg"><label class="fl">التاريخ</label><input class="fc" type="date" id="efl-date"></div>
     <div class="fg"><label class="fl">ملاحظات</label><input class="fc" type="text" id="efl-notes"></div>
@@ -2028,10 +2028,34 @@ function openEditFeedLog(lid){
   oModal('mo-flog');
 }
 async function saveEditFeedLog(){
-  const lid=document.getElementById('efl-id').value; const qty=parseFloat(document.getElementById('efl-qty').value);
-  if(!qty||qty<=0) return toast('❌ كمية غير صحيحة','err');
-  await window.dbUpdate(window.dbRef(db,`logs/${lid}`),{ feedType:document.getElementById('efl-ftype').value, sector:document.getElementById('efl-sec').value, qty, date:document.getElementById('efl-date').value, notes:document.getElementById('efl-notes').value, });
-  cModal('mo-flog'); toast('✅ تم تعديل السجل','ok');
+  const lid=document.getElementById('efl-id').value;
+  const newQty=parseFloat(document.getElementById('efl-qty').value);
+  if(!newQty||newQty<=0) return toast('❌ كمية غير صحيحة','err');
+  const l=state.logs[lid];
+  if(!l) return toast('⚠️ السجل غير موجود','err');
+  // تحديث المخزن تلقائياً عند التعديل
+  const oldQty=l.qty||0;
+  const diff=newQty-oldQty; // بالكيلو
+  if(Math.abs(diff)>0.0001){
+    const key=sk(l.feedType,l.float);
+    const current=getStock(l.feedType,l.float);
+    // diff موجب = استهلك أكثر => نطرح من المخزن
+    // diff سالب = استهلك أقل => نُعيد للمخزن
+    const newStock=addStockDelta(current,'ton',-diff/1000);
+    // نمنع الرصيد من السلبية
+    newStock.b25=Math.max(0,newStock.b25||0);
+    newStock.b50=Math.max(0,newStock.b50||0);
+    newStock.ton=Math.max(0,newStock.ton||0);
+    await window.dbUpdate(window.dbRef(db,'store/'+key),newStock);
+  }
+  await window.dbUpdate(window.dbRef(db,`logs/${lid}`),{
+    feedType:document.getElementById('efl-ftype').value,
+    sector:document.getElementById('efl-sec').value,
+    qty:newQty,
+    date:document.getElementById('efl-date').value,
+    notes:document.getElementById('efl-notes').value
+  });
+  cModal('mo-flog'); toast('✅ تم التعديل وتحديث المخزن','ok');
 }
 
 function openEditStoreLog(lid) {
@@ -2088,7 +2112,15 @@ async function delStoreLog(lid) {
 
 async function delLog(lid){
   if(!confirm('حذف هذا السجل؟')) return;
-  await window.dbRemove(window.dbRef(db,`logs/${lid}`)); toast('🗑️ تم الحذف','ok');
+  const l=state.logs[lid];
+  if(l && l.type==='feedout' && l.qty){
+    const key=sk(l.feedType,l.float);
+    const current=getStock(l.feedType,l.float);
+    const newStock=addStockDelta(current,'ton',l.qty/1000);
+    await window.dbUpdate(window.dbRef(db,'store/'+key),newStock);
+  }
+  await window.dbRemove(window.dbRef(db,`logs/${lid}`));
+  toast('🗑️ تم الحذف وإعادة الكمية للمخزن','ok');
 }
 
 // ── MANUAL STORE OVERRIDE ──
