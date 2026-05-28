@@ -1067,6 +1067,65 @@ function sectorZariaFeedCost(secKey){
   const zf = (state.sectors[secKey]||{}).zariaFeed || {};
   return Object.values(zf).reduce((s,e)=> s+(e.cost||0), 0);
 }
+function sectorZariaFeedLogCost(secKey){
+  return Object.values(state.logs||{}).filter(l=> l && l.type==='feed_out' && l.sector===secKey && (l.notes||'').includes('\u0639\u0644\u0641 \u0632\u0631\u064A\u0639\u0629') && (l.feedCost||0)>0).reduce((s,l)=>s+(l.feedCost||0),0);
+}
+function sectorZariaFeedLogKg(secKey){
+  return Object.values(state.logs||{}).filter(l=> l && l.type==='feed_out' && l.sector===secKey && (l.notes||'').includes('\u0639\u0644\u0641 \u0632\u0631\u064A\u0639\u0629')).reduce((s,l)=>s+(l.qty||0),0);
+}
+
+function sectorZariaExpenseCost(secKey){
+  const exp = (state.sectors[secKey]||{}).zariaExpenses || {};
+  return Object.values(exp).reduce((s,e)=> s+(e.amount||0), 0);
+}
+function toggleZariaExpenseForm(k){
+  var f = document.getElementById('zaria-exp-form-'+k);
+  if(f) f.style.display = f.style.display==='none'?'block':'none';
+}
+function toggleZariaExpenseFormPage(k){
+  var f = document.getElementById('zaria-exp-form-p-'+k);
+  if(f) f.style.display = f.style.display==='none'?'block':'none';
+}
+async function saveZariaExpense(k, isPage){
+  const sfx = isPage ? 'p-'+k : k;
+  const nameEl = document.getElementById('ze-name-'+sfx);
+  const amountEl = document.getElementById('ze-amount-'+sfx);
+  const dateEl = document.getElementById('ze-date-'+sfx);
+  const name = nameEl ? nameEl.value.trim() : '';
+  const amount = parseFloat(amountEl ? amountEl.value : 0);
+  const date = dateEl ? dateEl.value : '';
+  if(!name) return toast('\u274C \u0623\u062F\u062E\u0644 \u0627\u0633\u0645 \u0627\u0644\u0645\u0635\u0631\u0648\u0641','err');
+  if(!amount||amount<=0) return toast('\u274C \u0623\u062F\u062E\u0644 \u0645\u0628\u0644\u063A \u0635\u062D\u064A\u062D','err');
+  if(!date) return toast('\u274C \u0623\u062F\u062E\u0644 \u0627\u0644\u062A\u0627\u0631\u064A\u062E','err');
+  const lr = window.dbPush(window.dbRef(db,'sectors/'+k+'/zariaExpenses'));
+  await window.dbSet(lr,{name, amount, date, ts:ts()});
+  nameEl.value=''; amountEl.value='';
+  toast('\u2705 \u062A\u0645 \u062D\u0641\u0638 \u0627\u0644\u0645\u0635\u0631\u0648\u0641: '+name,'ok');
+  isPage ? toggleZariaExpenseFormPage(k) : toggleZariaExpenseForm(k);
+}
+async function delZariaExpense(secKey, eid){
+  if(!confirm('\u062D\u0630\u0641 \u0647\u0630\u0627 \u0627\u0644\u0645\u0635\u0631\u0648\u0641\u061F')) return;
+  await window.dbRemove(window.dbRef(db,'sectors/'+secKey+'/zariaExpenses/'+eid));
+  toast('\uD83D\uDDD1\uFE0F \u062A\u0645 \u0627\u0644\u062D\u0630\u0641','ok');
+}
+function renderZariaExpenseForm(k, isPage){
+  const sfx = isPage ? 'p-'+k : k;
+  const today = new Date().toISOString().split('T')[0];
+  const cancelFn = isPage ? 'toggleZariaExpenseFormPage' : 'toggleZariaExpenseForm';
+  return '<div id="zaria-exp-form-'+sfx+'" style="display:none;background:rgba(231,76,60,.06);border:1px solid rgba(231,76,60,.25);border-radius:9px;padding:11px;margin-top:8px;">'
+    +'<div style="font-size:11px;font-weight:700;color:#e74c3c;margin-bottom:8px;">💸 إضافة مصروف للزريعة</div>'
+    +'<div style="margin-bottom:7px;"><label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px;">اسم المصروف</label>'
+    +'<input id="ze-name-'+sfx+'" type="text" placeholder="مثال: مواصلات، صيانة، أدوية..." class="fc" style="width:100%;"/></div>'
+    +'<div style="margin-bottom:7px;"><label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px;">المبلغ (ج.م)</label>'
+    +'<input id="ze-amount-'+sfx+'" type="number" min="0" step="0.01" placeholder="0.00" class="fc" style="width:100%;border-color:#e74c3c;"/></div>'
+    +'<div style="margin-bottom:9px;"><label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px;">التاريخ</label>'
+    +'<input id="ze-date-'+sfx+'" type="date" class="fc" style="width:100%;" value="'+today+'"/></div>'
+    +'<div style="display:flex;gap:7px;">'
+    +'<button class="btn" style="flex:1;background:linear-gradient(135deg,#922b21,#e74c3c);color:#fff;" onclick="saveZariaExpense(&quot;'+k+'&quot;,'+isPage+')">💾 حفظ</button>'
+    +'<button class="btn btn-danger" style="flex:1;" onclick="'+cancelFn+'(&quot;'+k+'&quot;)">إلغاء</button>'
+    +'</div></div>';
+}
+
 function sectorZariaFeedKg(secKey){
   const zf = (state.sectors[secKey]||{}).zariaFeed || {};
   return Object.values(zf).reduce((s,e)=> s+(e.weight||0), 0);
@@ -1722,8 +1781,57 @@ function renderZaria(k){
     +'</div>';
 
   h += renderZariaFeedForm(k, false);
+
+  // مصاريف الزريعة
+  const zariaExpList = Object.entries((state.sectors[k]||{}).zariaExpenses||{});
+  const zariaExpCostT = sectorZariaExpenseCost(k);
+  h += '<div style="margin-top:10px;border-top:1px solid rgba(231,76,60,0.2);padding-top:8px;">';
+  h += '<div style="font-size:11px;font-weight:700;color:#e74c3c;margin-bottom:6px;">\uD83D\uDCB8 \u0645\u0635\u0627\u0631\u064A\u0641 \u0627\u0644\u0632\u0631\u064A\u0639\u0629:</div>';
+  if(zariaExpList.length===0){
+    h += '<div style="font-size:10px;color:var(--muted);text-align:center;padding:2px 0;">\u0644\u0627 \u062A\u0648\u062C\u062F \u0645\u0635\u0627\u0631\u064A\u0641 \u0645\u0633\u062C\u0644\u0629</div>';
+  } else {
+    h += zariaExpList.map(function([eid,e]){
+      return '<div class="extra-exp-item">'
+        +'<div><div class="extra-exp-name">'+e.name+'</div>'
+        +'<div style="font-size:10px;color:var(--muted);">'+fmtDate(e.date)+'</div></div>'
+        +'<div style="display:flex;align-items:center;gap:7px;">'
+        +'<div class="extra-exp-val">'+fmtCost(e.amount)+' \u062C.\u0645</div>'
+        +'<button class="b-del" onclick="delZariaExpense(&quot;'+k+'&quot;,&quot;'+eid+'&quot;)">\uD83D\uDDD1\uFE0F</button>'
+        +'</div></div>';
+    }).join('');
+    if(zariaExpCostT>0) h += '<div style="font-size:12px;font-weight:900;color:#e74c3c;border-top:1px solid rgba(231,76,60,.2);padding-top:6px;margin-top:4px;text-align:left;">\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0645\u0635\u0627\u0631\u064A\u0641: '+fmtCost(zariaExpCostT)+' \u062C.\u0645</div>';
+  }
+  h += renderZariaExpenseForm(k, false);
+  h += '</div>';
+
+  // ملخص تكاليف الزريعة
+  const _feedCostR = zariaFeedCostT || sectorZariaFeedLogCost(k);
+  const totalAllZ  = zariaCostT + _feedCostR + zariaExpCostT;
+  const hasAnyData = zariaCostT > 0 || zariaFeedKgT > 0 || zariaExpCostT > 0;
+  if(hasAnyData){
+    h += '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,209,102,.2);border-radius:10px;padding:10px 14px;margin-top:10px;">';
+    h += '<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:7px;">📊 ملخص تكاليف الزريعة</div>';
+    if(zariaCostT>0) h += '<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;"><span style="color:var(--cyan);">🐟 تكلفة الزريعة</span><span style="color:var(--cost-color);font-weight:700;">'+fmtCost(zariaCostT)+' ج.م</span></div>';
+    if(zariaFeedKgT>0){
+      if(_feedCostR>0){
+        h += '<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;"><span style="color:var(--feed-cost-color);">🌾 تكلفة علف الزريعة</span><span style="color:var(--feed-cost-color);font-weight:700;">'+fmtCost(_feedCostR)+' ج.م</span></div>';
+      } else {
+        h += '<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;align-items:center;"><span style="color:var(--feed-cost-color);">🌾 علف الزريعة</span><span style="font-size:10px;color:var(--muted);">'+zariaFeedKgT+' كجم — لم يُدخَل سعر</span></div>';
+      }
+    }
+    if(zariaExpCostT>0) h += '<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;"><span style="color:#e74c3c;">💸 المصاريف الأخرى</span><span style="color:#e74c3c;font-weight:700;">'+fmtCost(zariaExpCostT)+' ج.م</span></div>';
+    h += '<div style="display:flex;justify-content:space-between;font-size:13px;border-top:1px solid rgba(255,209,102,.25);padding-top:6px;margin-top:4px;">';
+    h += '<span style="color:var(--gold);font-weight:700;">= الإجمالي الكلي للزريعة</span>';
+    h += '<span style="color:var(--gold);font-weight:900;">'+(totalAllZ>0?fmtCost(totalAllZ)+' ج.م':'<span style=\"font-size:10px;color:var(--muted);\">أدخل أسعار العلف لحساب الإجمالي</span>')+'</span>';
+    h += '</div>';
+    h += '</div>';
+  }
+
   return h;
 }
+
+
+
 
 
 function renderZariaPage(){
@@ -1757,6 +1865,32 @@ function renderZariaPage(){
     if(zariaCostT>0) html += '<span style="background:var(--cost-bg);border:1px solid var(--cost-border);border-radius:14px;padding:2px 10px;font-size:11px;color:var(--cost-color);font-weight:700;">'+fmtCost(zariaCostT)+'</span>';
     if(zariaFeedKgT>0) html += '<span style="background:var(--feed-cost-bg);border:1px solid var(--feed-cost-border);border-radius:14px;padding:2px 10px;font-size:11px;color:var(--feed-cost-color);font-weight:700;">🌾 '+zariaFeedKgT+' كجم</span>';
     html += '</div></div>';
+
+    // مستطيل ملون بلون القطاع يعرض إجمالي التكاليف
+    const _zc   = zariaCostT;
+    const _zfkg = zariaFeedKgT;                              // كجم علف الزريعة
+    const _zfc  = zariaFeedCostT || sectorZariaFeedLogCost(k); // تكلفة علف الزريعة
+    const _ec   = sectorZariaExpenseCost(k);
+    const _tot  = _zc + _zfc + _ec;
+    const _hasData = _zc > 0 || _zfkg > 0 || _ec > 0;
+    if(_hasData){
+      html += '<div style="margin-bottom:10px;border-radius:12px;overflow:hidden;border:2px solid '+sec.color+'44;">';
+      html += '<div style="background:linear-gradient(135deg,'+sec.color+'44,'+sec.color+'11);padding:8px 14px;border-bottom:1px solid '+sec.color+'33;">';
+      html += '<span style="font-size:12px;font-weight:800;color:'+sec.color+';">📊 إجمالي مصاريف الزريعة — '+sec.name+'</span>';
+      html += '</div>';
+      html += '<div style="padding:10px 14px;display:flex;flex-direction:column;gap:6px;">';
+      if(_zc>0) html += '<div style="display:flex;justify-content:space-between;font-size:11px;"><span style="color:var(--cyan);">🐟 تكاليف الزريعة</span><span style="color:var(--cost-color);font-weight:700;">'+fmtCost(_zc)+' ج.م</span></div>';
+      if(_zfkg>0) html += '<div style="display:flex;justify-content:space-between;font-size:11px;align-items:center;">'
+        +'<span style="color:var(--feed-cost-color);">🌾 علف الزريعة</span>'
+        +'<span style="color:var(--feed-cost-color);font-weight:700;text-align:left;">'
+        +(_zfc>0 ? fmtCost(_zfc)+' ج.م' : '<span style="font-size:10px;color:var(--muted);">'+_zfkg+' كجم — بدون سعر</span>')
+        +'</span></div>';
+      if(_ec>0) html += '<div style="display:flex;justify-content:space-between;font-size:11px;"><span style="color:#e74c3c;">💸 مصاريف الزريعة</span><span style="color:#e74c3c;font-weight:700;">'+fmtCost(_ec)+' ج.م</span></div>';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid '+sec.color+'44;padding-top:7px;margin-top:2px;">';
+      html += '<span style="font-size:12px;font-weight:700;color:'+sec.color+';">= الإجمالي الكلي للزريعة</span>';
+      html += '<span style="font-size:15px;font-weight:900;color:'+sec.color+';">'+(_tot>0?fmtCost(_tot)+' ج.م':'<span style="font-size:11px;color:var(--muted);">أدخل أسعار العلف لحساب الإجمالي</span>')+'</span>';
+      html += '</div></div></div>';
+    }
 
     if(zariaList.length > 0) {
       html += '<div style="font-size:11px;font-weight:bold;color:var(--cyan);margin-bottom:4px;">🐟 كميات الزريعة المسجلة:</div>';
@@ -1793,7 +1927,39 @@ function renderZariaPage(){
     html += '<div style="display:flex;gap:7px;margin-top:8px;">';
     html += '<button class="btn btn-zaria btn-sm" style="flex:1;" data-sk="'+k+'" onclick="toggleZariaPage(this.dataset.sk)">🐟 إضافة زريعة</button>';
     html += '<button class="btn btn-gold btn-sm" style="flex:1; background:linear-gradient(135deg,#c97d20,var(--feed-cost-color)); color:var(--deep);" data-sk="'+k+'" onclick="toggleZariaFeedPage(this.dataset.sk)">🍽️ إضافة علف زريعة</button>';
+    html += '<button class="btn btn-sm" style="flex:1;background:linear-gradient(135deg,#922b21,#e74c3c);color:#fff;" data-sk="'+k+'" onclick="toggleZariaExpenseFormPage(this.dataset.sk)">💸 مصاريف</button>';
     html += '</div>';
+
+    // مصاريف الزريعة في صفحة الزريعة
+    const zariaExpListP = Object.entries((state.sectors[k]||{}).zariaExpenses||{});
+    const zariaExpCostP = sectorZariaExpenseCost(k);
+    if(zariaExpListP.length>0){
+      html += '<div style="margin-top:8px;border-top:1px solid rgba(231,76,60,.2);padding-top:7px;">';
+      html += '<div style="font-size:11px;font-weight:700;color:#e74c3c;margin-bottom:5px;">💸 مصاريف الزريعة:</div>';
+      html += zariaExpListP.map(function([eid,e]){
+        return '<div class="extra-exp-item"><div><div class="extra-exp-name">'+e.name+'</div>'
+          +'<div style="font-size:10px;color:var(--muted);">'+fmtDate(e.date)+'</div></div>'
+          +'<div style="display:flex;align-items:center;gap:6px;"><div class="extra-exp-val">'+fmtCost(e.amount)+' ج.م</div>'
+          +'<button class="b-del" onclick="delZariaExpense(&quot;'+k+'&quot;,&quot;'+eid+'&quot;)">🗑️</button></div></div>';
+      }).join('');
+      if(zariaExpCostP>0) html += '<div style="font-size:12px;font-weight:900;color:#e74c3c;text-align:left;padding-top:5px;">إجمالي المصاريف: '+fmtCost(zariaExpCostP)+' ج.م</div>';
+      html += '</div>';
+    }
+    html += renderZariaExpenseForm(k, true);
+
+    // ملخص إجمالي تكاليف الزريعة لكل قطاع
+    const totalZP = zariaCostT + zariaFeedCostT + (zariaExpCostP||0);
+    if(totalZP>0){
+      html += '<div style="background:rgba(255,209,102,.05);border:1px solid rgba(255,209,102,.2);border-radius:9px;padding:9px 13px;margin-top:8px;">';
+      html += '<div style="font-size:10px;color:var(--muted);margin-bottom:5px;">📊 إجمالي تكاليف الزريعة — '+sec.name+'</div>';
+      html += '<div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;">';
+      if(zariaCostT>0)    html += '<span style="font-size:11px;color:var(--cost-color);">🐟 زريعة: '+fmtCost(zariaCostT)+'</span>';
+      if(zariaFeedCostT>0) html += '<span style="color:var(--muted);">+</span><span style="font-size:11px;color:var(--feed-cost-color);">🌾 علف: '+fmtCost(zariaFeedCostT)+'</span>';
+      if(zariaExpCostP>0)  html += '<span style="color:var(--muted);">+</span><span style="font-size:11px;color:#e74c3c;">💸 مصاريف: '+fmtCost(zariaExpCostP)+'</span>';
+      html += '<span style="color:var(--muted);">= </span><span style="font-size:13px;font-weight:900;color:var(--gold);">'+fmtCost(totalZP)+' ج.م</span>';
+      html += '</div></div>';
+    }
+
     html += '</div>';
   });
 
@@ -1893,6 +2059,31 @@ function renderSectors(){
           ${renderZaria(k)}
           <button class="btn btn-zaria btn" style="margin-top:8px;" onclick="toggleZariaForm('${k}')">🐟 إضافة زريعة بالعدد</button>
           <button class="btn btn-gold btn" style="margin-top:6px; background:linear-gradient(135deg,#c97d20,var(--feed-cost-color)); color:var(--deep);" onclick="toggleZariaFeedForm('${k}')">🍽️ إضافة علف منفصل للزريعة (كجم)</button>
+          <button class="btn btn-sm" style="margin-top:6px;width:100%;background:linear-gradient(135deg,#922b21,#e74c3c);color:#fff;" onclick="toggleZariaExpenseForm('${k}')">💸 إضافة مصروف للزريعة</button>
+          \${(()=>{ 
+            const _zc   = sectorZariaCost('${k}');
+            const _zfkg = sectorZariaFeedKg('${k}');
+            const _zfc  = sectorZariaFeedCost('${k}') || sectorZariaFeedLogCost('${k}');
+            const _ec   = sectorZariaExpenseCost('${k}');
+            const _tot  = _zc + _zfc + _ec;
+            const _has  = _zc>0 || _zfkg>0 || _ec>0;
+            if(!_has) return '';
+            const _sec = SECTORS['${k}'];
+            return \`<div style="margin-top:12px;border-radius:12px;overflow:hidden;border:2px solid \${_sec.color}44;">
+              <div style="background:linear-gradient(135deg,\${_sec.color}33,\${_sec.color}11);padding:8px 13px;border-bottom:1px solid \${_sec.color}33;">
+                <span style="font-size:12px;font-weight:800;color:\${_sec.color};">📊 إجمالي مصاريف الزريعة — \${_sec.name}</span>
+              </div>
+              <div style="padding:10px 13px;display:flex;flex-direction:column;gap:6px;">
+                \${_zc>0?'<div style="display:flex;justify-content:space-between;font-size:11px;"><span style="color:var(--cyan);">🐟 تكاليف الزريعة</span><span style="color:var(--cost-color);font-weight:700;">'+fmtCost(_zc)+' ج.م</span></div>':''}
+                \${_zfkg>0?('<div style="display:flex;justify-content:space-between;font-size:11px;align-items:center;"><span style="color:var(--feed-cost-color);">🌾 علف الزريعة</span><span style="color:var(--feed-cost-color);font-weight:700;">'+(_zfc>0?fmtCost(_zfc)+' ج.م':'<span style=\"font-size:10px;color:var(--muted);\">'+ _zfkg +' كجم — بدون سعر</span>')+'</span></div>'):''}
+                \${_ec>0?'<div style="display:flex;justify-content:space-between;font-size:11px;"><span style="color:#e74c3c;">💸 مصاريف الزريعة</span><span style="color:#e74c3c;font-weight:700;">'+fmtCost(_ec)+' ج.م</span></div>':''}
+                <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid \${_sec.color}33;padding-top:7px;margin-top:2px;">
+                  <span style="font-size:12px;font-weight:700;color:\${_sec.color};">= الإجمالي الكلي للزريعة</span>
+                  <span style="font-size:15px;font-weight:900;color:\${_sec.color};">\${_tot>0?fmtCost(_tot)+' ج.م':'<span style=\"font-size:10px;color:var(--muted);\">' + (_zfkg>0?_zfkg+' كجم علف — أدخل الأسعار':'—') + '</span>'}</span>
+                </div>
+              </div>
+            </div>\`;
+          })()}
         </div>
 
         <div style="display:flex; gap:7px; margin-top:7px;">
