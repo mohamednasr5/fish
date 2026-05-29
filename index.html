@@ -1523,7 +1523,7 @@ function init(){
   if(!window.db){ return; }
   window.dbOnValue(window.dbRef(db,'sectors'), snap=>{ state.sectors=snap.val()||{}; renderSectors(); renderDashboard(); renderZariaPage(); });
   window.dbOnValue(window.dbRef(db,'store'),   snap=>{ state.store=snap.val()||{};   renderStore();   renderDashboard(); fStockInfo(); });
-  window.dbOnValue(window.dbRef(db,'logs'),    snap=>{ state.logs=snap.val()||{};    renderLogs();    renderDashboard(); renderStoreLogs(); });
+  window.dbOnValue(window.dbRef(db,'logs'),    snap=>{ state.logs=snap.val()||{};    renderLogs();    renderDashboard(); renderStoreLogs(); renderSectors(); });
   setupPWA();
 }
 
