@@ -1715,11 +1715,11 @@ function renderExtras(k){
 }
 
 function renderZaria(k){
-  const zariaList = Object.entries((state.sectors[k]||{}).zaria||{});
+  const zariaList = Object.entries((state.sectors[k]||{}).zaria||{}).sort((a,b)=>{ const da=a[1].date||'',db2=b[1].date||''; return da>db2?-1:da<db2?1:0; });
   const zariaQtyT  = zariaList.reduce(function(s,e){return s+(e[1].qty||0);},0);
   const zariaCostT = sectorZariaCost(k);
   
-  const zariaFeedList = Object.entries((state.sectors[k]||{}).zariaFeed||{});
+  const zariaFeedList = Object.entries((state.sectors[k]||{}).zariaFeed||{}).sort((a,b)=>{ const da=a[1].date||'',db2=b[1].date||''; return da>db2?-1:da<db2?1:0; });
   const zariaFeedKgT  = sectorZariaFeedKg(k);
   const zariaFeedCostT = sectorZariaFeedCost(k);
 
@@ -1803,7 +1803,7 @@ function renderZaria(k){
   h += renderZariaFeedForm(k, false);
 
   // مصاريف الزريعة
-  const zariaExpList = Object.entries((state.sectors[k]||{}).zariaExpenses||{});
+  const zariaExpList = Object.entries((state.sectors[k]||{}).zariaExpenses||{}).sort((a,b)=>{ const da=a[1].date||'',db2=b[1].date||''; return da>db2?-1:da<db2?1:0; });
   const zariaExpCostT = sectorZariaExpenseCost(k);
   h += '<div style="margin-top:10px;border-top:1px solid rgba(231,76,60,0.2);padding-top:8px;">';
   h += '<div style="font-size:11px;font-weight:700;color:#e74c3c;margin-bottom:6px;">💸 مصاريف الزريعة:</div>';
@@ -1855,8 +1855,8 @@ function renderZariaPage(){
   let hasAny = false;
 
   Object.entries(SECTORS).forEach(function([k, sec]){
-    const zariaList = Object.entries((state.sectors[k]||{}).zaria||{});
-    const zariaFeedList = Object.entries((state.sectors[k]||{}).zariaFeed||{});
+    const zariaList = Object.entries((state.sectors[k]||{}).zaria||{}).sort((a,b)=>{ const da=a[1].date||'',db2=b[1].date||''; return da>db2?-1:da<db2?1:0; });
+    const zariaFeedList = Object.entries((state.sectors[k]||{}).zariaFeed||{}).sort((a,b)=>{ const da=a[1].date||'',db2=b[1].date||''; return da>db2?-1:da<db2?1:0; });
     
     if(zariaList.length === 0 && zariaFeedList.length === 0) return;
     hasAny = true;
@@ -1919,7 +1919,7 @@ function renderZariaPage(){
     html += '</div>';
 
     // مصاريف الزريعة
-    const zariaExpListP = Object.entries((state.sectors[k]||{}).zariaExpenses||{});
+    const zariaExpListP = Object.entries((state.sectors[k]||{}).zariaExpenses||{}).sort((a,b)=>{ const da=a[1].date||'',db2=b[1].date||''; return da>db2?-1:da<db2?1:0; });
     const zariaExpCostP = sectorZariaExpenseCost(k);
     if(zariaExpListP.length>0){
       html += '<div style="margin-top:8px;border-top:1px solid rgba(231,76,60,.2);padding-top:7px;">';
@@ -2117,7 +2117,14 @@ function renderStore(){
 
 function renderStoreLogs(){
   const el = document.getElementById('storeLogsEl'); if(!el) return;
-  const logs = Object.entries(state.logs).filter(([,l])=>l && l.type==='store_in').sort((a,b)=>(b[1].ts||0)-(a[1].ts||0)).slice(0, 10);
+  const logs = Object.entries(state.logs)
+    .filter(([,l])=>l && l.type==='store_in')
+    .sort((a,b)=>{
+      const da=a[1].date||''; const db2=b[1].date||'';
+      if(da!==db2) return da>db2?-1:1;
+      return (b[1].ts||0)-(a[1].ts||0);
+    })
+    .slice(0, 10);
   if(!logs.length){ el.innerHTML = '<div class="empty" style="padding:15px;"><p>لا توجد عمليات إضافة بعد</p></div>'; return; }
   el.innerHTML = logs.map(([id,l])=>logHTML({...l,id},true)).join('');
 }
@@ -2170,7 +2177,11 @@ function logHTML(log, withAct){
 function renderLogs(){
   const el=document.getElementById('logsEl'); if(!el) return;
   const tf=document.getElementById('lg-type')?.value||'all'; const sf=document.getElementById('lg-sec')?.value||'all';
-  let entries=Object.entries(state.logs).filter(([,l])=>l).sort((a,b)=>(b[1].ts||0)-(a[1].ts||0));
+  let entries=Object.entries(state.logs).filter(([,l])=>l).sort((a,b)=>{
+    const da=a[1].date||''; const db2=b[1].date||'';
+    if(da!==db2) return da>db2?-1:1;
+    return (b[1].ts||0)-(a[1].ts||0);
+  });
   if(tf!=='all') entries=entries.filter(([,l])=>l.type===tf);
   if(sf!=='all') entries=entries.filter(([,l])=>sf==='store'?l.type==='store_in':l.sector===sf);
   el.innerHTML=entries.length ?entries.map(([id,l])=>logHTML({...l,id},true)).join('') :'<div class="empty"><div class="ei">📋</div><p>لا توجد سجلات مطابقة</p></div>';
@@ -2391,14 +2402,20 @@ async function delStoreLog(lid) {
 async function delLog(lid){
   if(!confirm('حذف هذا السجل؟')) return;
   const l=state.logs[lid];
-  if(l && l.type==='feedout' && l.qty){
+  if(l && l.type==='feed_out' && l.qty){
     const key=sk(l.feedType,l.float);
     const current=getStock(l.feedType,l.float);
     const newStock=addStockDelta(current,'ton',l.qty/1000);
+    newStock.b25=Math.max(0,newStock.b25||0);
+    newStock.b50=Math.max(0,newStock.b50||0);
+    newStock.ton=Math.max(0,newStock.ton||0);
     await window.dbUpdate(window.dbRef(db,'store/'+key),newStock);
+    await window.dbRemove(window.dbRef(db,`logs/${lid}`));
+    toast('🗑️ تم الحذف وإعادة الكمية للمخزن','ok');
+  } else {
+    await window.dbRemove(window.dbRef(db,`logs/${lid}`));
+    toast('🗑️ تم الحذف','ok');
   }
-  await window.dbRemove(window.dbRef(db,`logs/${lid}`));
-  toast('🗑️ تم الحذف وإعادة الكمية للمخزن','ok');
 }
 
 // ── MANUAL STORE OVERRIDE ──
