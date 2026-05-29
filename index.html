@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 
 <script type="module">
@@ -547,6 +547,7 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
       <button class="nb" onclick="showPage('feed')">🍽️ التغذية</button>
       <button class="nb" onclick="showPage('zaria')">🐟 الزريعة</button>
       <button class="nb" onclick="showPage('logs')">📋 السجل</button>
+      <button class="nb" onclick="showPage('movements')">🔄 الحركات</button>
     </nav>
   </header>
 
@@ -711,6 +712,35 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
         <select class="fc" id="lg-sec" onchange="renderLogs()" style="flex:1;"></select>
       </div>
       <div id="logsEl"><div class="loading"><div class="spin"></div> تحميل...</div></div>
+    </div>
+
+    <div class="pg" id="pg-movements">
+      <div class="pg-ttl">🔄 سجل الحركات الكاملة</div>
+      <div class="card" style="margin-bottom:14px;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <select class="fc" id="mv-type" onchange="renderMovements()" style="flex:1;min-width:150px;">
+            <option value="all">📋 كل الحركات</option>
+            <option value="store_in">➕ إدخال علف للمخزن</option>
+            <option value="feed_out">➖ إخراج علف للقطاع</option>
+            <option value="fish_in">🐟 إدخال أسماك</option>
+            <option value="fish_out">💰 إخراج أسماك (تصريف)</option>
+            <option value="zaria_in">🐣 إدخال زريعة</option>
+            <option value="zaria_feed">🌿 علف زريعة</option>
+            <option value="store_edit">✏️ تعديل إدخال علف</option>
+            <option value="stock_edit">✏️ تعديل رصيد مخزن</option>
+            <option value="fish_delete">🗑️ حذف سمكة</option>
+            <option value="store_delete">🗑️ حذف إدخال مخزن</option>
+          </select>
+          <select class="fc" id="mv-sec" onchange="renderMovements()" style="flex:1;min-width:150px;">
+            <option value="all">🌊 كل القطاعات / المخزن</option>
+          </select>
+          <input type="date" class="fc" id="mv-from" onchange="renderMovements()" style="flex:1;min-width:130px;">
+          <input type="date" class="fc" id="mv-to"   onchange="renderMovements()" style="flex:1;min-width:130px;">
+          <button class="btn btn-primary" onclick="resetMvFilters()" style="white-space:nowrap;padding:8px 14px;">🔄 إعادة ضبط</button>
+        </div>
+        <div id="mv-count" style="margin-top:8px;font-size:12px;color:var(--muted);"></div>
+      </div>
+      <div id="movementsEl"><div class="loading"><div class="spin"></div> تحميل...</div></div>
     </div>
   </main>
 </div>
@@ -1536,7 +1566,8 @@ function showPage(p){
   } else {
     const el=document.getElementById('pg-'+p); if(el) el.classList.add('active');
   }
-  const idx=['dashboard','sectors','store','feed','zaria','logs'].indexOf(p);
+  if(p==='movements'){initMovementsFilters();renderMovements();}
+  const idx=['dashboard','sectors','store','feed','zaria','logs','movements'].indexOf(p);
   if(idx>=0) document.querySelectorAll('.nb')[idx].classList.add('active');
   window.scrollTo(0,0);
 }
@@ -2201,11 +2232,13 @@ async function doAddStore(){
   const current = getStock(type,float);
   const newStock= { b25:(current.b25||0)+(delta.b25||0), b50:(current.b50||0)+(delta.b50||0), ton:(current.ton||0)+(delta.ton||0) };
   await window.dbSet(window.dbRef(db,`store/${key}`), newStock);
+  const _bKg=stockToKg(current),_aKg=stockToKg(newStock);
   const lr = window.dbPush(window.dbRef(db,'logs'));
   await window.dbSet(lr,{ 
     type:'store_in', feedType:type, float, qty:kg, 
     qtyLabel:fmtStockEntry(val,state.storeUnit), 
     rawVal: val, unit: state.storeUnit,
+    stockBefore:_bKg.toFixed(1)+' كجم', stockAfter:_aKg.toFixed(1)+' كجم',
     date, ts:ts() 
   });
   document.getElementById('s-qty').value='';
@@ -2231,10 +2264,12 @@ async function doFeedOut(){
   const feedCost= price>0 ? val*price : 0; 
 
   await window.dbUpdate(window.dbRef(db,`store/${key}`), newStock);
+  const _bKgF=stockToKg(current),_aKgF=stockToKg(newStock);
   const lr = window.dbPush(window.dbRef(db,'logs'));
   await window.dbSet(lr,{
     type:'feed_out', feedType, float, qty:kg, qtyLabel:fmtStockEntry(val,state.feedUnit), remLabel:fmtStock(newStock),
-    sector, date, notes, ts:ts(), unitPrice: price>0?price:0, feedUnit: state.feedUnit, feedCost: feedCost
+    sector, date, notes, ts:ts(), unitPrice: price>0?price:0, feedUnit: state.feedUnit, feedCost: feedCost,
+    stockBefore:_bKgF.toFixed(1)+' كجم', stockAfter:_aKgF.toFixed(1)+' كجم'
   });
   document.getElementById('f-qty').value=''; document.getElementById('f-price').value=''; document.getElementById('f-notes').value='';
   document.getElementById('f-calc').style.display='none'; document.getElementById('f-price-calc').style.display='none';
@@ -2251,7 +2286,11 @@ async function doAddFish(){
   const fishData = {type, value, unit, date, ts:ts()}; if(price>0) fishData.price = price; if(notes) fishData.notes = notes;
   const fishRef = window.dbPush(window.dbRef(db,`sectors/${sector}/fish`)); await window.dbSet(fishRef, fishData);
   const totalCost = price>0 ? value*price : 0;
-  const logData = { type:'fish_in', fishType:type, fishDisplay: fmtFish({value,unit}), qty: fishKg({value,unit}), totalCost: totalCost, sector, date, ts:ts() };
+  const _fBefore=Object.values(state.sectors[sector]?.fish||{}).reduce((s,f)=>s+fishKg(f),0);
+  const _fAfter=_fBefore+fishKg({value,unit});
+  const logData={type:'fish_in',fishType:type,fishDisplay:fmtFish({value,unit}),qty:fishKg({value,unit}),totalCost:totalCost,sector,date,ts:ts(),
+    stockBefore:_fBefore>=1000?(_fBefore/1000).toFixed(2)+' طن':_fBefore.toFixed(0)+' كجم',
+    stockAfter:_fAfter>=1000?(_fAfter/1000).toFixed(2)+' طن':_fAfter.toFixed(0)+' كجم'};
   if(notes) logData.notes = notes;
   const lr = window.dbPush(window.dbRef(db,'logs'));
   await window.dbSet(lr, logData);
@@ -2284,7 +2323,19 @@ async function saveEditFish(){
   await window.dbUpdate(window.dbRef(db,`sectors/${sec}/fish/${fid}`), upd);
   cModal('mo-fish'); toast('✅ تم التعديل','ok');
 }
-async function delFish(sec,fid){ if(!confirm('حذف هذا السجل؟')) return; await window.dbRemove(window.dbRef(db,`sectors/${sec}/fish/${fid}`)); toast('🗑️ تم الحذف','ok'); }
+async function delFish(sec,fid){
+  if(!confirm('حذف هذا السجل؟')) return;
+  const _fd=state.sectors[sec]?.fish?.[fid];
+  const _fTot=Object.values(state.sectors[sec]?.fish||{}).reduce((s,f)=>s+fishKg(f),0);
+  const _fAftD=_fTot-(_fd?fishKg(_fd):0);
+  await window.dbRemove(window.dbRef(db,`sectors/${sec}/fish/${fid}`));
+  const _dlr=window.dbPush(window.dbRef(db,'logs'));
+  await window.dbSet(_dlr,{type:'fish_delete',fishType:_fd?.type||'—',sector:sec,
+    date:new Date().toISOString().split('T')[0],ts:ts(),
+    stockBefore:_fTot>=1000?(_fTot/1000).toFixed(2)+' طن':_fTot.toFixed(0)+' كجم',
+    stockAfter:_fAftD>=1000?(_fAftD/1000).toFixed(2)+' طن':_fAftD.toFixed(0)+' كجم'});
+  toast('🗑️ تم الحذف','ok');
+}
 
 function openEditFeedLog(lid){
   const l=state.logs[lid]; if(!l) return;
@@ -2328,7 +2379,14 @@ async function saveEditFeedLog(){
     date:document.getElementById('efl-date').value,
     notes:document.getElementById('efl-notes').value
   });
-  cModal('mo-flog'); toast('✅ تم التعديل وتحديث المخزن','ok');
+  cModal('mo-flog'); const _eflCur=getStock(l.feedType,l.float);
+  const _eflB=stockToKg(_eflCur); const _newQtyEfl=parseFloat(document.getElementById('efl-qty').value)||l.qty;
+  const _eflA=_eflB-(_newQtyEfl-(l.qty||0));
+  const _eflr=window.dbPush(window.dbRef(db,'logs'));
+  await window.dbSet(_eflr,{type:'store_edit',feedType:l.feedType,float:l.float,
+    oldQty:l.qty||0,qty:_newQtyEfl,date:l.date,ts:ts(),
+    stockBefore:_eflB.toFixed(1)+' كجم',stockAfter:_eflA.toFixed(1)+' كجم'});
+  toast('✅ تم التعديل وتحديث المخزن','ok');
 }
 function calcEflCostPreview(){
   const qty=parseFloat(document.getElementById('efl-qty').value)||0;
@@ -2382,6 +2440,12 @@ async function saveEditStoreLog() {
     date: newDate
   });
 
+  const _eslCur=getStock(l.feedType,l.float);
+  const _eslB=stockToKg(_eslCur); const _eslA=_eslB+(newKg-(l.qty||0));
+  const _elr=window.dbPush(window.dbRef(db,'logs'));
+  await window.dbSet(_elr,{type:'store_edit',feedType:l.feedType,float:l.float,
+    oldQty:l.qty||0,qty:newKg,date:newDate||l.date,ts:ts(),
+    stockBefore:_eslB.toFixed(1)+' كجم',stockAfter:_eslA.toFixed(1)+' كجم'});
   cModal('mo-slog');
   toast('✅ تم تعديل العملية وتحديث رصيد المخزن تلقائياً','ok');
 }
@@ -2457,246 +2521,484 @@ function installApp(){ if(!deferredPrompt) return; deferredPrompt.prompt(); defe
 if('serviceWorker'in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 
 // ══════════════════════════════════════════════════════════════════
-// ✅ دوال مساعدة للتصدير بصيغة Excel مع التنسيق والدعم للأجهزة المحمولة
+// ✅ النسخة المطورة والمحدثة لدوال التصدير والتنسيق المتطور (تنسيق كامل + دعم الآيفون + اتجاه الشيت يمين لليسار RTL)
 // ══════════════════════════════════════════════════════════════════
 
-function applyExcelFormatting(ws, data) {
-  if(!ws['!ref']) return;
+function applyExcelFormatting(ws) {
+  if (!ws || !ws['!ref']) return;
   var range = XLSX.utils.decode_range(ws['!ref']);
-  function mkB(c,s){s=s||'thin';return {top:{style:s,color:{rgb:c}},bottom:{style:s,color:{rgb:c}},left:{style:s,color:{rgb:c}},right:{style:s,color:{rgb:c}}};}
-  var ST = {
-    header:  {fill:{patternType:'solid',fgColor:{rgb:'FF003366'}}, font:{bold:true,color:{rgb:'FFFFFFFF'},sz:13}, alignment:{horizontal:'center',vertical:'center',wrapText:true}, border:mkB('FF003366','medium')},
-    section: {fill:{patternType:'solid',fgColor:{rgb:'FF0A3875'}}, font:{bold:true,color:{rgb:'FFFFFFFF'},sz:12}, alignment:{horizontal:'right',vertical:'center'}, border:mkB('FF0A3875','medium')},
-    colHead: {fill:{patternType:'solid',fgColor:{rgb:'FF1A5276'}}, font:{bold:true,color:{rgb:'FFFFFFFF'},sz:11}, alignment:{horizontal:'center',vertical:'center'}, border:mkB('FF1A5276','medium')},
-    data:    {fill:{patternType:'solid',fgColor:{rgb:'FFEAF4FF'}}, font:{sz:11}, alignment:{horizontal:'right',vertical:'center',wrapText:true}, border:mkB('FF99CCFF')},
-    dataAlt: {fill:{patternType:'solid',fgColor:{rgb:'FFD6EAF8'}}, font:{sz:11}, alignment:{horizontal:'right',vertical:'center',wrapText:true}, border:mkB('FF85C1E9')},
-    total:   {fill:{patternType:'solid',fgColor:{rgb:'FF154360'}}, font:{bold:true,color:{rgb:'FFFFFFFF'},sz:12}, alignment:{horizontal:'right',vertical:'center'}, border:mkB('FF154360','medium')},
-    profit:  {fill:{patternType:'solid',fgColor:{rgb:'FF1E8449'}}, font:{bold:true,color:{rgb:'FFFFFFFF'},sz:12}, alignment:{horizontal:'right',vertical:'center'}, border:mkB('FF1E8449','medium')},
-    loss:    {fill:{patternType:'solid',fgColor:{rgb:'FF922B21'}}, font:{bold:true,color:{rgb:'FFFFFFFF'},sz:12}, alignment:{horizontal:'right',vertical:'center'}, border:mkB('FF922B21','medium')},
-    zaria:   {fill:{patternType:'solid',fgColor:{rgb:'FF0B5345'}}, font:{bold:true,color:{rgb:'FFFFFFFF'},sz:11}, alignment:{horizontal:'right',vertical:'center'}, border:mkB('FF0B5345','medium')},
-    extra:   {fill:{patternType:'solid',fgColor:{rgb:'FF6E2F1A'}}, font:{bold:true,color:{rgb:'FFFFFFFF'},sz:11}, alignment:{horizontal:'right',vertical:'center'}, border:mkB('FF6E2F1A','medium')},
-    empty:   {fill:{patternType:'solid',fgColor:{rgb:'FFF2F3F4'}}},
-  };
-  var dataRow = 0;
-  var prevWasSection = false;
-  if(!ws['!rows']) ws['!rows'] = [];
-  for(var R = range.s.r; R <= range.e.r; R++){
-    ws['!rows'][R] = {hpt: R===0 ? 32 : 22};
-    var firstCell = ws[XLSX.utils.encode_cell({r:R,c:range.s.c})];
-    var fv = String(firstCell ? firstCell.v||'' : '');
-    var isEmpty = fv.trim() === '';
-    var isSectionHeader = /^[📊💰🌿📈🏭⏱️]/.test(fv) && fv.length > 2;
-    var isColHeader = prevWasSection;
-    var isTotalRow  = /^📊/.test(fv) && !isSectionHeader;
-    var isZariaSection = fv.indexOf('زريعة') > -1 && isSectionHeader;
-    var isExtraSection = fv.indexOf('مصروف') > -1 && isSectionHeader;
-    if(!isEmpty && !isSectionHeader) prevWasSection = isColHeader ? false : prevWasSection;
-    if(isSectionHeader) { prevWasSection=true; dataRow=0; }
-    else if(isColHeader) { prevWasSection=false; dataRow=0; }
-    else if(!isEmpty)   { dataRow++; }
-    for(var C = range.s.c; C <= range.e.c; C++){
-      var addr = XLSX.utils.encode_cell({r:R, c:C});
-      if(!ws[addr]) ws[addr] = {v:'', t:'s'};
-      var st;
-      if(isEmpty)                st = ST.empty;
-      else if(isZariaSection)    st = ST.zaria;
-      else if(isExtraSection)    st = ST.extra;
-      else if(isSectionHeader)   st = ST.section;
-      else if(isColHeader)       st = ST.colHead;
-      else if(isTotalRow){ var lv=String((ws[XLSX.utils.encode_cell({r:R,c:range.e.c})]||{}).v||''); if(lv.charAt(0)==='+') st=ST.profit; else if(lv.charAt(0)==='-') st=ST.loss; else st=ST.total; }
-      else st = dataRow%2===0 ? ST.dataAlt : ST.data;
-      ws[addr].s = st;
-    }
-    if(isEmpty) ws['!rows'][R]={hpt:8};
+  
+  // تفعيل العرض من اليمين لليسار في الإكسيل
+  ws['!views'] = [{ rightToLeft: true }];
+
+  // دالة مساعدة لعمل الحدود
+  function makeBorder(color, style) {
+    style = style || 'thin';
+    return {
+      top: { style: style, color: { rgb: color } },
+      bottom: { style: style, color: { rgb: color } },
+      left: { style: style, color: { rgb: color } },
+      right: { style: style, color: { rgb: color } }
+    };
   }
+
+  // مصفوفة الألوان والتنسيقات الفاخرة المعتمدة باستخدام مكتبة xlsx-js-style
+  var Styles = {
+    mainHeader: { fill: { fgColor: { rgb: '0F2C59' } }, font: { bold: true, color: { rgb: 'FFFFFF' }, sz: 14 }, alignment: { horizontal: 'center', vertical: 'center' }, border: makeBorder('0F2C59', 'medium') },
+    tableHeader: { fill: { fgColor: { rgb: '1E5128' } }, font: { bold: true, color: { rgb: 'FFFFFF' }, sz: 11 }, alignment: { horizontal: 'center', vertical: 'center' }, border: makeBorder('1E5128') },
+    secHeader: { fill: { fgColor: { rgb: '4F709C' } }, font: { bold: true, color: { rgb: 'FFFFFF' }, sz: 12 }, alignment: { horizontal: 'right', vertical: 'center' }, border: makeBorder('4F709C') },
+    dataRowEven: { fill: { fgColor: { rgb: 'F5F7F8' } }, font: { sz: 11 }, alignment: { horizontal: 'right', vertical: 'center', wrapText: true }, border: makeBorder('E5E5E5') },
+    dataRowOdd: { fill: { fgColor: { rgb: 'FFFFFF' } }, font: { sz: 11 }, alignment: { horizontal: 'right', vertical: 'center', wrapText: true }, border: makeBorder('E5E5E5') },
+    totalRow: { fill: { fgColor: { rgb: 'D8AE7E' } }, font: { bold: true, color: { rgb: '000000' }, sz: 11 }, alignment: { horizontal: 'right', vertical: 'center' }, border: makeBorder('D8AE7E') },
+    profitRow: { fill: { fgColor: { rgb: 'C1E1C1' } }, font: { bold: true, color: { rgb: '1E5128' }, sz: 11 }, alignment: { horizontal: 'right', vertical: 'center' }, border: makeBorder('C1E1C1') },
+    lossRow: { fill: { fgColor: { rgb: 'F8C8DC' } }, font: { bold: true, color: { rgb: '922B21' }, sz: 11 }, alignment: { horizontal: 'right', vertical: 'center' }, border: makeBorder('F8C8DC') }
+  };
+
+  if (!ws['!rows']) ws['!rows'] = [];
+
+  for (var R = range.s.r; R <= range.e.r; R++) {
+    // تحديد ارتفاع مرن للاسطر
+    ws['!rows'][R] = { hpt: R === 0 ? 35 : 24 };
+    
+    // فحص الخلية الأولى في السطر لتحديد نوع التنسيق الموجه لها
+    var firstCellAddr = XLSX.utils.encode_cell({ r: R, c: range.s.c });
+    var cellValue = ws[firstCellAddr] ? String(ws[firstCellAddr].v || '').trim() : '';
+    
+    var currentTableType = 'data';
+    var isMainTitle = (R === 0) || (cellValue.indexOf('📊') === 0 && (cellValue.indexOf('الشامل') > -1 || cellValue.indexOf('الرئيسي') > -1 || cellValue.indexOf('الرئيسية') > -1));
+    var isSectionTitle = /^[📊💰🌿📈🏭⏱️🔄🐣🐟💸📋]/.test(cellValue) && !isMainTitle && cellValue.indexOf('إجمالي') !== 0;
+    var isHeaderRow = (cellValue === 'القطاع' || cellValue === 'نوع العلف' || cellValue === 'نوع السمك' || cellValue === 'إجمالي الأسماك' || cellValue === 'النوع' || cellValue === 'اسم المصروف' || cellValue === 'الكمية (عدد)' || cellValue === 'نوع الحركة' || cellValue === 'العملية' || cellValue === 'نوع البيان والعملية' || cellValue === 'بند المصروف النثري' || cellValue === 'اسم المصرف المشغل' || cellValue === 'اسم قطاع الحوض السمكي');
+    var isTotal = cellValue.indexOf('📊 إجمالي') === 0 || cellValue.indexOf('الإجمالي') === 0 || cellValue.indexOf('=') === 0;
+
+    if (isMainTitle) currentTableType = 'main';
+    else if (isSectionTitle) currentTableType = 'section';
+    else if (isHeaderRow) currentTableType = 'header';
+    else if (isTotal) currentTableType = 'total';
+    else if (cellValue === '') currentTableType = 'empty';
+
+    for (var C = range.s.c; C <= range.e.c; C++) {
+      var cellAddr = XLSX.utils.encode_cell({ r: R, c: C });
+      if (!ws[cellAddr]) ws[cellAddr] = { v: '', t: 's' };
+      
+      switch (currentTableType) {
+        case 'main':
+          ws[cellAddr].s = Styles.mainHeader;
+          break;
+        case 'section':
+          ws[cellAddr].s = Styles.secHeader;
+          break;
+        case 'header':
+          ws[cellAddr].s = Styles.tableHeader;
+          break;
+        case 'total':
+          var lastCellInRow = ws[XLSX.utils.encode_cell({ r: R, c: range.e.c })];
+          var lastVal = lastCellInRow ? String(lastCellInRow.v || '') : '';
+          if (lastVal.indexOf('-') > -1) {
+            ws[cellAddr].s = Styles.lossRow;
+          } else if (lastVal.indexOf('+') > -1 || lastVal.indexOf('ربح') > -1) {
+            ws[cellAddr].s = Styles.profitRow;
+          } else {
+            ws[cellAddr].s = Styles.totalRow;
+          }
+          break;
+        case 'data':
+          ws[cellAddr].s = (R % 2 === 0) ? Styles.dataRowEven : Styles.dataRowOdd;
+          break;
+        default:
+          if (cellValue === '') ws['!rows'][R] = { hpt: 12 };
+          break;
+      }
+    }
+  }
+
+  // ضبط عرض الأعمدة بشكل احترافي
   var colCount = range.e.c - range.s.c + 1;
   ws['!cols'] = [];
-  for(var i=0; i<colCount; i++) ws['!cols'].push({wch: i===0 ? 32 : 20});
+  for (var i = 0; i < colCount; i++) {
+    ws['!cols'].push({ wch: i === 0 ? 35 : (i === 1 || i === 3 ? 26 : 22) });
+  }
 }
 
 function exportToFile(workbook, fileName) {
   try {
-    XLSX.writeFile(workbook, fileName);
-    toast('✅ تم تصدير البيانات بنجاح', 'ok');
-  } catch (e) {
-    try {
-      const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-      const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      
-      if (navigator.msSaveBlob) {
-        navigator.msSaveBlob(blob, fileName);
-      } else {
-        const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
-        link.href = url;
-        link.download = fileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        setTimeout(() => URL.revokeObjectURL(url), 100);
-      }
-      toast('✅ تم تصدير البيانات بنجاح', 'ok');
-    } catch (err) {
-      toast('❌ حدث خطأ في التصدير. يرجى المحاولة من جهاز آخر.', 'err');
-      console.error('Export error:', err);
+    var wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'binary' });
+    function s2ab(s) {
+      var buf = new ArrayBuffer(s.length);
+      var view = new Uint8Array(buf);
+      for (var i = 0; i < s.length; i++) view[i] = s.charCodeAt(i) & 0xFF;
+      return buf;
     }
+    var blob = new Blob([s2ab(wbout)], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    saveAs(blob, fileName);
+    toast('✅ تم تصدير وتحميل الملف بنجاح', 'ok');
+  } catch (err) {
+    toast('❌ حدث خطأ أثناء التصدير، يرجى إعادة المحاولة.', 'err');
+    console.error('خطأ في التصدير الشامل:', err);
   }
 }
 
-// ══════════════════════════════════════════════════════════════════
-// ✅ دوال التصدير بصيغة Excel الشاملة
-// ══════════════════════════════════════════════════════════════════
+
+// ══════════════════════════════════════════════════════════
+// 🔄 دوال قسم الحركات الكاملة
+// ══════════════════════════════════════════════════════════
+function initMovementsFilters(){
+  const sel=document.getElementById('mv-sec'); if(!sel) return;
+  const cur=sel.value;
+  sel.innerHTML='<option value="all">🌊 كل القطاعات / المخزن</option><option value="_store">🏭 المخزن فقط</option>';
+  Object.entries(SECTORS).forEach(([k,s])=>{
+    const o=document.createElement('option');o.value=k;o.textContent=s.name;sel.appendChild(o);
+  });
+  try{sel.value=cur;}catch(e){}
+}
+
+function resetMvFilters(){
+  ['mv-from','mv-to'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  const t=document.getElementById('mv-type');if(t)t.value='all';
+  const s=document.getElementById('mv-sec');if(s)s.value='all';
+  renderMovements();
+}
+
+function mvTypeName(type){
+  const m={
+    store_in:'➕ إدخال علف للمخزن',
+    feed_out:'➖ إخراج علف للقطاع',
+    fish_in:'🐟 إدخال أسماك',
+    fish_out:'💰 إخراج أسماك (تصريف)',
+    store_edit:'✏️ تعديل إدخال علف',
+    stock_edit:'✏️ تعديل رصيد مخزن',
+    zaria_in:'🐣 إدخال زريعة',
+    zaria_feed:'🌿 علف زريعة',
+    fish_delete:'🗑️ حذف سمكة',
+    store_delete:'🗑️ حذف إدخال مخزن'
+  };
+  return m[type]||type;
+}
+
+function mvBadgeColor(type){
+  const c={
+    store_in:'#1a7a4a',
+    feed_out:'#c0392b',
+    fish_in:'#1a5276',
+    fish_out:'#b7770d',
+    store_edit:'#6d4c7e',
+    stock_edit:'#6d4c7e',
+    zaria_in:'#0b5345',
+    zaria_feed:'#145a32',
+    fish_delete:'#7b241c',
+    store_delete:'#7b241c'
+  };
+  return c[type]||'#555';
+}
+
+function mvFmtKg(kg){
+  if(kg===undefined||kg===null) return '—';
+  const k=parseFloat(kg);
+  if(isNaN(k)) return String(kg);
+  return k>=1000?(k/1000).toFixed(2)+' طن':k.toFixed(1)+' كجم';
+}
+
+function renderMovements(){
+  const el=document.getElementById('movementsEl');
+  if(!el) return;
+
+  const tf  = document.getElementById('mv-type')?.value||'all';
+  const sf  = document.getElementById('mv-sec')?.value||'all';
+  const from= document.getElementById('mv-from')?.value||'';
+  const to  = document.getElementById('mv-to')?.value||'';
+
+  let entries = Object.entries(state.logs)
+    .filter(([,l])=>l)
+    .sort((a,b)=>{
+      const da=a[1].date||'', db2=b[1].date||'';
+      if(da!==db2) return da>db2?-1:1;
+      return (b[1].ts||0)-(a[1].ts||0);
+    });
+
+  if(tf!=='all') entries=entries.filter(([,l])=>l.type===tf);
+  if(sf==='_store') entries=entries.filter(([,l])=>['store_in','store_edit','stock_edit','store_delete'].includes(l.type));
+  else if(sf!=='all') entries=entries.filter(([,l])=>l.sector===sf);
+  if(from) entries=entries.filter(([,l])=>l.date>=from);
+  if(to)   entries=entries.filter(([,l])=>l.date<=to);
+
+  const cnt=document.getElementById('mv-count');
+  if(cnt) cnt.textContent='إجمالي النتائج: '+entries.length+' حركة';
+
+  if(!entries.length){
+    el.innerHTML='<div class="empty"><div class="ei">🔄</div><p>لا توجد حركات مطابقة للفلاتر المحددة</p></div>';
+    return;
+  }
+
+  el.innerHTML=entries.map(([id,l])=>{
+    const color   = mvBadgeColor(l.type);
+    const secName = l.sector&&SECTORS[l.sector]?SECTORS[l.sector].name:'';
+    const timeStr = l.ts?new Date(l.ts).toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'}):'';
+
+    // ── بناء تفاصيل الحركة ──
+    let details = '';
+    if(l.type==='store_in'){
+      details = 'علف <b>'+l.feedType+'%</b> — '+(l.float==='float'?'🌊 طافي':'⬇️ غاطس')
+              + ' — الكمية: <b>'+(l.qtyLabel||mvFmtKg(l.qty))+'</b>';
+    } else if(l.type==='feed_out'){
+      details = 'علف <b>'+l.feedType+'%</b> — '+(l.float==='float'?'🌊 طافي':'⬇️ غاطس')
+              + ' — الكمية: <b>'+(l.qtyLabel||mvFmtKg(l.qty))+'</b>'
+              + (l.feedCost>0?' — التكلفة: <b>'+l.feedCost.toLocaleString('ar-EG')+' ج.م</b>':'')
+              + (secName?' — القطاع: <b>'+secName+'</b>':'');
+    } else if(l.type==='fish_in'){
+      details = 'نوع: <b>'+(l.fishType||'—')+'</b>'
+              + ' — الكمية: <b>'+(l.fishDisplay||mvFmtKg(l.qty))+'</b>'
+              + (l.totalCost>0?' — التكلفة: <b>'+l.totalCost.toLocaleString('ar-EG')+' ج.م</b>':'')
+              + (secName?' — القطاع: <b>'+secName+'</b>':'');
+    } else if(l.type==='fish_out'){
+      details = 'نوع: <b>'+(l.fishType||'—')+'</b>'
+              + ' — الكمية: <b>'+(l.qtyLabel||mvFmtKg(l.qty))+'</b>'
+              + (l.totalRevenue>0?' — الإيراد: <b>'+l.totalRevenue.toLocaleString('ar-EG')+' ج.م</b>':'')
+              + (secName?' — القطاع: <b>'+secName+'</b>':'');
+    } else if(l.type==='zaria_in'){
+      details = 'زريعة <b>'+(l.fishType||'—')+'</b>'
+              + ' — العدد: <b>'+((l.qty||0).toLocaleString('ar-EG'))+' قطعة</b>'
+              + (l.totalCost>0?' — التكلفة: <b>'+l.totalCost.toLocaleString('ar-EG')+' ج.م</b>':'')
+              + (secName?' — القطاع: <b>'+secName+'</b>':'');
+    } else if(l.type==='zaria_feed'){
+      details = 'علف زريعة — الوزن: <b>'+(l.weight||'—')+' كجم</b>'
+              + (l.cost>0?' — التكلفة: <b>'+l.cost.toLocaleString('ar-EG')+' ج.م</b>':'')
+              + (secName?' — القطاع: <b>'+secName+'</b>':'');
+    } else if(l.type==='store_edit'||l.type==='stock_edit'){
+      details = 'تعديل '+(l.feedType?'علف <b>'+l.feedType+'%</b>':'رصيد المخزن')
+              + (l.oldQty!==undefined?' — القديم: <b>'+mvFmtKg(l.oldQty)+'</b> ← الجديد: <b>'+mvFmtKg(l.qty)+'</b>':'');
+    } else if(l.type==='fish_delete'){
+      details = '🗑️ تم حذف سمكة — النوع: <b>'+(l.fishType||'—')+'</b>'
+              + (secName?' — القطاع: <b>'+secName+'</b>':'');
+    } else if(l.type==='store_delete'){
+      details = '🗑️ تم حذف إدخال مخزن — '+(l.feedType?'علف <b>'+l.feedType+'%</b>':'')
+              + (l.qtyLabel?' — الكمية: <b>'+l.qtyLabel+'</b>':'');
+    } else {
+      details = mvTypeName(l.type);
+    }
+
+    if(l.notes) details += ' — <span style="color:var(--muted);font-style:italic;">'+l.notes+'</span>';
+
+    // ── رصيد المخزن قبل وبعد ──
+    const hasSB = l.stockBefore!==undefined && l.stockAfter!==undefined;
+    const stockBadges = hasSB
+      ? '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:9px;">'
+        + '<span style="background:#fff3cd;color:#7d6008;border-radius:8px;padding:4px 13px;font-size:12px;font-weight:bold;">📦 الرصيد قبل الحركة: '+l.stockBefore+'</span>'
+        + '<span style="background:#d1e7dd;color:#0a3622;border-radius:8px;padding:4px 13px;font-size:12px;font-weight:bold;">📦 الرصيد بعد الحركة: '+l.stockAfter+'</span>'
+        + '</div>'
+      : '';
+
+    return '<div class="card" style="margin-bottom:10px;padding:13px 15px;border-right:5px solid '+color+';border-radius:10px;">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">'
+      + '<span style="background:'+color+';color:#fff;border-radius:8px;padding:4px 13px;font-size:12px;font-weight:bold;">'+mvTypeName(l.type)+'</span>'
+      + '<span style="color:var(--muted);font-size:12px;">📅 '+(l.date||'—')+(timeStr?' &nbsp;⏱️ '+timeStr:'')+'</span>'
+      + '</div>'
+      + '<div style="margin-top:9px;font-size:13px;line-height:1.8;">'+details+'</div>'
+      + stockBadges
+      + '</div>';
+  }).join('');
+}
 
 function exportAllData() {
-  if (typeof XLSX === 'undefined') return toast('❌ يرجى الانتظار...', 'err');
+  if (typeof XLSX === 'undefined') return toast('❌ يرجى الانتظار لحين تحميل المكتبات...', 'err');
+  const wb = XLSX.utils.book_new();
 
-  const totalFish  = Object.values(state.sectors).reduce((s,sec)=>{ if(sec&&sec.fish) Object.values(sec.fish).forEach(f=>s+=fishKg(f)); return s; },0);
-  const totalFeed  = Object.values(state.store).reduce((s,v)=>s+stockToKg(v),0);
-  const farmCost   = totalFarmCost();
-  const feedCost   = totalFeedCost();
-  const harvestRev = totalHarvestRevenue();
-  const extraAll   = Object.keys(SECTORS).reduce((s,k)=>s+sectorExtraCost(k),0);
-  const totalCostAll = farmCost + feedCost + extraAll;
-  const netPnL     = harvestRev - totalCostAll;
-
+  // ══════════════════════════════════════
+  // الورقة الأولي: لوحة التحكم والتقرير الشامل
+  // ══════════════════════════════════════
+  const totalFish = Object.values(state.sectors).reduce((s, sec) => { if (sec && sec.fish) Object.values(sec.fish).forEach(f => s += fishKg(f)); return s; }, 0);
+  const totalFeed = Object.values(state.store).reduce((s, v) => s + stockToKg(v), 0);
+  const farmCost = totalFarmCost(), feedCost = totalFeedCost(), harvestRev = totalHarvestRevenue();
+  const extraAll = Object.keys(SECTORS).reduce((s, k) => s + sectorExtraCost(k), 0);
+  const netPnL = harvestRev - (farmCost + feedCost + extraAll);
+  
   const ws_data = [];
-
-  ws_data.push(['📊 إحصائيات المزرعة الرئيسية','','','','','']);
-  ws_data.push(['إجمالي الأسماك','إجمالي العلف','تكلفة الأسماك','تكلفة العلف','إيرادات البيع','صافي الربح / الخسارة']);
+  ws_data.push(['📊 إحصائيات المزرعة السمكية الرئيسية الشاملة', '', '', '', '', '']);
+  ws_data.push(['إجمالي الأسماك بالمزرعة', 'إجمالي العلف بالمخزن', 'إجمالي تكلفة الأسماك', 'إجمالي تكلفة العلف المسحوب', 'إيرادات مبيعات التصريف', 'صافي الربح أو الخسارة العام']);
   ws_data.push([
-    totalFish>=1000?(totalFish/1000).toFixed(2)+' طن':totalFish.toFixed(0)+' كجم',
-    totalFeed>=1000?(totalFeed/1000).toFixed(2)+' طن':totalFeed.toFixed(0)+' كجم',
-    farmCost.toLocaleString('ar-EG')+' ج.م',
-    feedCost.toLocaleString('ar-EG')+' ج.م',
-    harvestRev.toLocaleString('ar-EG')+' ج.م',
-    (netPnL>0?'+':'')+netPnL.toLocaleString('ar-EG')+' ج.م'
+    totalFish >= 1000 ? (totalFish / 1000).toFixed(2) + ' طن' : totalFish.toFixed(0) + ' كجم',
+    totalFeed >= 1000 ? (totalFeed / 1000).toFixed(2) + ' طن' : totalFeed.toFixed(0) + ' كجم',
+    farmCost.toLocaleString('ar-EG') + ' ج.م',
+    feedCost.toLocaleString('ar-EG') + ' ج.م',
+    harvestRev.toLocaleString('ar-EG') + ' ج.م',
+    (netPnL >= 0 ? '+' : '') + netPnL.toLocaleString('ar-EG') + ' ج.م'
   ]);
-  ws_data.push(['','','','','','']);
-
-  ws_data.push(['📈 الربح والخسارة لكل قطاع','','','','','','']);
-  ws_data.push(['القطاع','تكلفة الأسماك','تكلفة العلف','مصروفات إضافية','التكلفة الكلية','إيرادات المبيعات','صافي القطاع']);
-  let sumFishC=0,sumFeedC=0,sumExtraC=0,sumTotalC=0,sumRev=0,sumNet=0;
-  Object.entries(SECTORS).forEach(([k,sec])=>{
-    const p=sectorPnL(k);
-    if(p.revenue===0 && p.totalCost===0) return;
-    sumFishC+=p.fishCost; sumFeedC+=p.feedCost; sumExtraC+=(p.extraCost||0);
-    sumTotalC+=p.totalCost; sumRev+=p.revenue; sumNet+=p.net;
+  
+  ws_data.push(['', '', '', '', '', '']);
+  ws_data.push(['📈 تقرير الأداء المالي والأرباح لكل قطاع حوض نشط', '', '', '', '', '', '']);
+  ws_data.push(['اسم قطاع الحوض السمكي', 'تكلفة الأسماك الكبيرة', 'تكلفة استهلاك العلف', 'المصروفات الإضافية', 'إجمالي التكاليف الكلية', 'إيرادات التصريف والبيع', 'صافي ربحية القطاع (الربح/الخسارة)']);
+  
+  let sumFC = 0, sumFdC = 0, sumExC = 0, sumTC = 0, sumRv = 0, sumNt = 0;
+  Object.entries(SECTORS).forEach(([k, sec]) => {
+    const p = sectorPnL(k);
+    sumFC += p.fishCost; sumFdC += p.feedCost; sumExC += (p.extraCost || 0); sumTC += p.totalCost; sumRv += p.revenue; sumNt += p.net;
     ws_data.push([
       sec.name,
-      p.fishCost.toLocaleString('ar-EG')+' ج.م',
-      p.feedCost.toLocaleString('ar-EG')+' ج.م',
-      (p.extraCost||0)>0?(p.extraCost||0).toLocaleString('ar-EG')+' ج.م':'-',
-      p.totalCost.toLocaleString('ar-EG')+' ج.م',
-      p.revenue.toLocaleString('ar-EG')+' ج.م',
-      (p.net>0?'+':'')+p.net.toLocaleString('ar-EG')+' ج.م'
+      p.fishCost.toLocaleString('ar-EG') + ' ج.م',
+      p.feedCost.toLocaleString('ar-EG') + ' ج.m',
+      (p.extraCost || 0) > 0 ? (p.extraCost || 0).toLocaleString('ar-EG') + ' ج.م' : '0.00 ج.م',
+      p.totalCost.toLocaleString('ar-EG') + ' ج.م',
+      p.revenue.toLocaleString('ar-EG') + ' ج.م',
+      (p.net >= 0 ? '+' : '') + p.net.toLocaleString('ar-EG') + ' ج.م'
     ]);
   });
   ws_data.push([
-    '📊 إجمالي كل القطاعات',
-    sumFishC.toLocaleString('ar-EG')+' ج.م',
-    sumFeedC.toLocaleString('ar-EG')+' ج.م',
-    sumExtraC>0?sumExtraC.toLocaleString('ar-EG')+' ج.م':'-',
-    sumTotalC.toLocaleString('ar-EG')+' ج.م',
-    sumRev.toLocaleString('ar-EG')+' ج.م',
-    (sumNet>0?'+':'')+sumNet.toLocaleString('ar-EG')+' ج.م'
+    '📊 إجمالي كلف ومبيعات أحواض المزرعة',
+    sumFC.toLocaleString('ar-EG') + ' ج.م',
+    sumFdC.toLocaleString('ar-EG') + ' ج.م',
+    sumExC.toLocaleString('ar-EG') + ' ج.م',
+    sumTC.toLocaleString('ar-EG') + ' ج.م',
+    sumRv.toLocaleString('ar-EG') + ' ج.م',
+    (sumNt >= 0 ? '+' : '') + sumNt.toLocaleString('ar-EG') + ' ج.م'
   ]);
-  ws_data.push(['','','','','','','']);
 
-  let hasExtras=false;
-  Object.entries(SECTORS).forEach(([k,sec])=>{
-    const extras=Object.values((state.sectors[k]||{}).extras||{});
-    if(extras.length>0) hasExtras=true;
-  });
-  if(hasExtras){
-    ws_data.push(['💸 المصروفات الإضافية بالقطاعات','','','']);
-    ws_data.push(['القطاع','اسم المصروف','المبلغ','التاريخ']);
-    let totalExtras=0;
-    Object.entries(SECTORS).forEach(([k,sec])=>{
-      const extras=Object.entries((state.sectors[k]||{}).extras||{});
-      extras.forEach(([,e])=>{
-        totalExtras+=e.amount||0;
-        ws_data.push([sec.name, e.name, (e.amount||0).toLocaleString('ar-EG')+' ج.م', fmtDate(e.date)]);
-      });
-    });
-    ws_data.push(['📊 إجمالي المصروفات الإضافية','',totalExtras.toLocaleString('ar-EG')+' ج.م','']);
-    ws_data.push(['','','','']);
-  }
-
-  let hasZaria=false;
-  Object.keys(SECTORS).forEach(k=>{ if(Object.keys((state.sectors[k]||{}).zaria||{}).length>0 || Object.keys((state.sectors[k]||{}).zariaFeed||{}).length>0) hasZaria=true; });
-  if(hasZaria){
-    ws_data.push(['🐟 الزريعة وتغذيتها بالقطاعات (منفصلة تماماً)','','','','','']);
-    ws_data.push(['القطاع','نوع السمك / النوع','الكمية (عدد)','تكلفة الشراء','تاريخ العملية','الوزن (كجم)','تكلفة العلف','ملاحظات']);
-    let totalZariaQty=0, totalZariaCost=0, totalZariaFeedKg=0, totalZariaFeedCost=0;
-    Object.entries(SECTORS).forEach(([k,sec])=>{
-      const q = sectorZariaQty(k);
-      const c = sectorZariaCost(k);
-      const fkg = sectorZariaFeedKg(k);
-      const fcost = sectorZariaFeedCost(k);
-      if(q === 0 && fkg === 0) return;
-      totalZariaQty += q; totalZariaCost += c; totalZariaFeedKg += fkg; totalZariaFeedCost += fcost;
-      Object.values((state.sectors[k]||{}).zaria||{}).forEach(z=>{
-        ws_data.push([sec.name, z.fishType||'-', (z.qty||0).toLocaleString('ar-EG'), z.price>0?fmtCost(z.price):'-', z.date||'-', '-', '-', z.notes||'']);
-      });
-      Object.values((state.sectors[k]||{}).zariaFeed||{}).forEach(f=>{
-        ws_data.push([sec.name, 'علف زريعة', '-', '-', f.date||'-', f.weight+' كجم', f.cost>0?fmtCost(f.cost):'-', f.notes||'']);
-      });
-    });
-    ws_data.push(['📊 إجمالي حسابات الزريعة للكل',totalZariaQty.toLocaleString('ar-EG'),totalZariaCost>0?fmtCost(totalZariaCost):'-',totalZariaFeedKg+' كجم',totalZariaFeedCost>0?fmtCost(totalZariaFeedCost):'-','']);
-    ws_data.push(['','','','','','']);
-  }
-
-  ws_data.push(['🐟 بيانات الأسماك الحالية بالقطاعات','','','','','','']);
-  ws_data.push(['القطاع','النوع','الكمية','الوحدة','سعر الشراء','الإجمالي','التاريخ','ملاحظات']);
-  let sumFishQty=0,sumFishCostAll=0;
-  Object.entries(SECTORS).forEach(([k,sec])=>{
-    const fishData=state.sectors[k]?.fish||{};
-    Object.values(fishData).forEach(f=>{
-      let cost=(f.value||0)*(f.price||0);
-      sumFishQty+=(f.value||0); sumFishCostAll+=cost;
-      ws_data.push([sec.name,f.type,f.value,f.unit==='count'?'قطعة':f.unit==='kg'?'كجم':'طن',
-        f.price?f.price.toLocaleString('ar-EG')+' ج.م':'-',
-        cost>0?cost.toLocaleString('ar-EG')+' ج.م':'-',fmtDate(f.date),f.notes||'']);
+  ws_data.push(['', '', '', '', '', '']);
+  ws_data.push(['🏭 أرصدة الأعلاف المتاحة بالمخزن الحالي', '', '', '', '', '']);
+  ws_data.push(['نوع الصنف العلفي', 'حالة و نوع الطفو', 'شيكارة رصيد (25 كجم)', 'شيكارة رصيد (50 كجم)', 'رصيد فرط (بالطن)', 'إجمالي الوزن الصافي الكلي']);
+  
+  let sb25 = 0, sb50 = 0, ston = 0, skg = 0;
+  ['30', '18', '25'].forEach(t => {
+    ['float', 'sink'].forEach(fl => {
+      const s = getStock(t, fl), kg = stockToKg(s);
+      if (kg === 0) return;
+      sb25 += (s.b25 || 0); sb50 += (s.b50 || 0); ston += (s.ton || 0); skg += kg;
+      ws_data.push(['علف بروتين ' + t + '%', fl === 'float' ? '🌊 عايم / طافي' : '⬇️ غاطس أسفل', s.b25 || 0, s.b50 || 0, s.ton || 0, kg.toFixed(1) + ' كجم']);
     });
   });
-  ws_data.push(['📊 إجمالي الأسماك','',sumFishQty.toLocaleString('ar-EG'),'','',sumFishCostAll.toLocaleString('ar-EG')+' ج.م','','']);
-  ws_data.push(['','','','','','','','']);
+  ws_data.push(['📊 إجمالي جرد رصيد المخازن', '', sb25, sb50, ston, skg.toFixed(1) + ' كجم']);
 
-  ws_data.push(['🏭 رصيد المخزن الحالي','','','','','']);
-  ws_data.push(['نوع العلف','الطفو/الغاطس','شكارة 25 كجم','شكارة 50 كجم','طن','إجمالي (كجم)']);
-  let sumB25=0,sumB50=0,sumTon=0,sumKg=0;
-  ['30','18','25'].forEach(t=>{
-    ['float','sink'].forEach(fl=>{
-      const s=getStock(t,fl);
-      const kg=stockToKg(s);
-      if(kg===0) return;
-      sumB25+=(s.b25||0); sumB50+=(s.b50||0); sumTon+=(s.ton||0); sumKg+=kg;
-      ws_data.push([`علف ${t}%`,fl==='float'?'طافي':'غاطس',s.b25||0,s.b50||0,s.ton||0,kg.toFixed(1)+' كجم']);
-    });
+  const ws_main = XLSX.utils.aoa_to_sheet(ws_data);
+  applyExcelFormatting(ws_main);
+  XLSX.utils.book_append_sheet(wb, ws_main, 'لوحة التحكم والمخزن');
+
+  // ══════════════════════════════════════
+  // الأوراق التالية: ورقة تفصيلية منفصلة لكل قطاع
+  // ══════════════════════════════════════
+  Object.entries(SECTORS).forEach(([secKey, sec]) => {
+    const sn = sec.name, p = sectorPnL(secKey), sd = [];
+    
+    sd.push(['📊 التقرير التحليلي الشامل والمنظم لـ: ' + sn, '', '', '', '', '', '']);
+    sd.push(['تكلفة الأسماك المضافة', 'تكلفة استهلاك الأعلاف', 'مصروفات تشغيلية إضافية', 'التكلفة الكلية للقطاع', 'إجمالي مبيعات التصريف', 'صافي الأرباح / الخسائر الحالية']);
+    sd.push([
+      p.fishCost.toLocaleString('ar-EG') + ' ج.م',
+      p.feedCost.toLocaleString('ar-EG') + ' ج.م',
+      (p.extraCost || 0).toLocaleString('ar-EG') + ' ج.م',
+      p.totalCost.toLocaleString('ar-EG') + ' ج.م',
+      p.revenue.toLocaleString('ar-EG') + ' ج.م',
+      (p.net >= 0 ? '+' : '') + p.net.toLocaleString('ar-EG') + ' ج.م'
+    ]);
+    
+    // حصر جرد الأسماك بالقطاع
+    sd.push(['', '', '', '', '', '', '']);
+    const fishArr = Object.values(state.sectors[secKey]?.fish || {});
+    sd.push(['🐟 جرد وتفاصيل الأسماك المخزنة الحالية في ' + sn, '', '', '', '', '', '']);
+    sd.push(['نوع السمكة', 'الكمية المدرجة', 'وحدة القياس', 'سعر الشراء الفردي', 'إجمالي التكلفة المدفوعة', 'تاريخ الإنزال', 'ملاحظات وتفاصيل']);
+    if (fishArr.length > 0) {
+      let sq = 0, sc = 0;
+      fishArr.forEach(f => {
+        const c = (f.value || 0) * (f.price || 0); sq += (f.value || 0); sc += c;
+        sd.push([f.type, f.value, f.unit === 'count' ? 'قطعة' : f.unit === 'kg' ? 'كجم' : 'طن', f.price ? f.price.toLocaleString('ar-EG') + ' ج.م' : '-', c > 0 ? c.toLocaleString('ar-EG') + ' ج.م' : '0.00 ج.م', fmtDate(f.date), f.notes || '']);
+      });
+      sd.push(['📊 إجمالي الأسماك المضافة', sq.toLocaleString('ar-EG'), '', '', sc > 0 ? sc.toLocaleString('ar-EG') + ' ج.م' : '0.00 ج.م', '', '']);
+    } else {
+      sd.push(['لا توجد أسماك كبيرة مسجلة حالياً في هذا الحوض', '', '', '', '', '', '']);
+    }
+
+    // جرد قسم الزريعة (بالكامل شامل علف الزريعة المنفصل والمصاريف)
+    sd.push(['', '', '', '', '', '', '']);
+    const zariaList = Object.values((state.sectors[secKey] || {}).zaria || {});
+    const zariaFeedList = Object.values((state.sectors[secKey] || {}).zariaFeed || {});
+    const zariaExpList = Object.values((state.sectors[secKey] || {}).zariaExpenses || {});
+    
+    sd.push(['🐣 السجل الشامل لزريعة ' + sn + ' (حسابات مستقلة)', '', '', '', '', '', '']);
+    if (zariaList.length > 0 || zariaFeedList.length > 0 || zariaExpList.length > 0) {
+      sd.push(['نوع البيان والعملية', 'التفاصيل / الصنف', 'الكمية المستهلكة', 'سعر الوحدة', 'القيمة الكلية / التكلفة', 'التاريخ المسجل', 'ملاحظات']);
+      
+      let zariaTotalCostVal = 0;
+      zariaList.forEach(z => {
+        const zc = (z.qty || 0) * (z.price || 0); zariaTotalCostVal += zc;
+        sd.push(['إنزال دفعة زريعة', z.fishType || 'بوري', (z.qty || 0) + ' قطعة', z.price > 0 ? (zc / z.qty).toFixed(2) + ' ج.م' : '-', zc > 0 ? zc.toLocaleString('ar-EG') + ' ج.م' : '-', fmtDate(z.date), z.notes || '']);
+      });
+      zariaFeedList.forEach(zf => {
+        zariaTotalCostVal += (zf.cost || 0);
+        sd.push(['استهلاك علف زريعة', 'بروتين ' + (zf.feedType || '30') + '% (' + (zf.float === 'float' ? 'عايم' : 'غاطس') + ')', (zf.weight || 0) + ' كجم', zf.cost > 0 ? ((zf.cost || 0) / zf.weight).toFixed(2) + ' ج.م' : '-', (zf.cost || 0) > 0 ? zf.cost.toLocaleString('ar-EG') + ' ج.م' : 'بدون سعر', fmtDate(zf.date), zf.notes || '']);
+      });
+      zariaExpList.forEach(ze => {
+        zariaTotalCostVal += (ze.amount || 0);
+        sd.push(['مصروفات زريعة أخرى', ze.name, '-', '-', ze.amount.toLocaleString('ar-EG') + ' ج.م', fmtDate(ze.date), '-']);
+      });
+      sd.push(['📊 الإجمالي الكلي المنفق على الزريعة بحوض ' + sn, '', '', '', zariaTotalCostVal.toLocaleString('ar-EG') + ' ج.م', '', '']);
+    } else {
+      sd.push(['لا توجد سجلات زريعة أو تغذية زريعة منزلة في هذا الحوض', '', '', '', '', '', '']);
+    }
+
+    // المصروفات النثرية والتشغيلية الإضافية
+    sd.push(['', '', '', '', '', '', '']);
+    const extras = Object.values((state.sectors[secKey] || {}).extras || {});
+    sd.push(['💸 المصروفات التشغيلية الإضافية المرتبطة بـ ' + sn, '', '', '', '', '', '']);
+    sd.push(['بند المصروف النثري', 'قيمة المصروف المدفوع', 'تاريخ الصرف المعين', '', '', '', '']);
+    if (extras.length > 0) {
+      let sumExtra = 0;
+      extras.forEach(e => { sumExtra += (e.amount || 0); sd.push([e.name, (e.amount || 0).toLocaleString('ar-EG') + ' ج.م', fmtDate(e.date), '', '', '', '']); });
+      sd.push(['📊 إجمالي المصاريف التشغيلية للحوض', sumExtra.toLocaleString('ar-EG') + ' ج.م', '', '', '', '', '']);
+    } else {
+      sd.push(['لا توجد مصروفات نثرية أو تشغيلية مسجلة لهذا الحوض', '', '', '', '', '', '']);
+    }
+
+    const ws_sec = XLSX.utils.aoa_to_sheet(sd);
+    applyExcelFormatting(ws_sec);
+    // تفادي مشكلة طول اسم الورقة في إكسيل (أقصى حد 31 حرف)
+    const validSheetName = sn.length > 25 ? sn.substring(0, 25) : sn;
+    XLSX.utils.book_append_sheet(wb, ws_sec, validSheetName);
   });
-  ws_data.push(['📊 إجمالي المخزن','',sumB25,sumB50,sumTon,sumKg.toFixed(1)+' كجم']);
-  ws_data.push(['','','','','','']);
 
-  const harvestLogs=Object.values(state.logs||{}).filter(l=>l&&l.type==='fish_out').sort((a,b)=>(b[1].ts||0)-(a[1].ts||0));
-  if(harvestLogs.length>0){
-    ws_data.push(['💰 عمليات التصريف (المبيعات)','','','','']);
-    ws_data.push(['القطاع','النوع','الكمية','الإيراد','التاريخ','ملاحظات']);
-    let sumHarvQty=0,sumHarvRev=0;
-    harvestLogs.forEach(l=>{
-      sumHarvQty+=(l.qty||0); sumHarvRev+=(l.totalRevenue||0);
-      ws_data.push([SECTORS[l.sector]?.name||l.sector,l.fishType||'-',l.qtyLabel||'-',(l.totalRevenue||0).toLocaleString('ar-EG')+' ج.م',fmtDate(l.date),l.notes||'']);
-    });
-    ws_data.push(['📊 إجمالي التصريف','','',sumHarvRev.toLocaleString('ar-EG')+' ج.م','','']);
-  }
+  // ══════════════════════════════════════
+  // الورقة الأخيرة: السجل الكامل الشامل للحركات والعمليات
+  // ══════════════════════════════════════
+  const mv_data = [];
+  mv_data.push(['🔄 السجل التاريخي والرقابي الكامل لكل حركات المزرعة والمخزن', '', '', '', '', '', '']);
+  mv_data.push(['نوع الحركة المسجلة', 'التاريخ واليوم', 'توقيت الحركة', 'بيانات وتفاصيل الحركة الشاملة', 'الكمية / القياس', 'رصيد المخزن (قبل)', 'رصيد المخزن (بعد)']);
+  
+  const typeMapEx = {
+    store_in: '➕ إدخال علف للمخزن', feed_out: '➖ إخراج علف للقطاع', fish_in: '🐟 إدخال أسماك وأوزان',
+    fish_out: '💰 إخراج أسماك (تصريف ومبيعات)', zaria_in: '🐣 إدخال زريعة جديدة', zaria_feed: '🌿 علف زريعة منفصل',
+    store_edit: '✏️ تعديل إدخال علف يدوياً', stock_edit: '✏️ تعديل أرصدة مخازن وجرد',
+    fish_delete: '🗑️ حذف سجل أسماك', store_delete: '🗑️ حذف حركة مخزن تلقائياً'
+  };
 
-  const ws = XLSX.utils.aoa_to_sheet(ws_data);
-  applyExcelFormatting(ws, ws_data);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'تقرير المزرعة');
-  exportToFile(wb, 'تقرير_مزرعة_الأسماك_'+new Date().toLocaleDateString('en-CA')+'.xlsx');
-  toast('✅ تم تصدير التقرير الكامل','ok');
+  const allLogs = Object.values(state.logs || {}).filter(l => l).sort((a, b) => {
+    const da = a.date || '', db2 = b.date || '';
+    if (da !== db2) return da > db2 ? -1 : 1;
+    return (b.ts || 0) - (a.ts || 0);
+  });
+
+  allLogs.forEach(l => {
+    const secName = l.sector && SECTORS[l.sector] ? SECTORS[l.sector].name : '';
+    const timeStr = l.ts ? new Date(l.ts).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : '';
+    const typeNameString = typeMapEx[l.type] || l.type;
+    let detailsStr = '', qtyStr = '';
+
+    if (l.type === 'store_in') { detailsStr = 'علف ' + l.feedType + '% — ' + (l.float === 'float' ? 'طافي' : 'غاطس'); qtyStr = l.qtyLabel || mvFmtKg(l.qty); }
+    else if (l.type === 'feed_out') { detailsStr = 'علف بروتين ' + l.feedType + '% ' + (l.float === 'float' ? 'طافي' : 'غاطس') + (secName ? ' موجه إلى ← ' + secName : '') + (l.feedCost > 0 ? ' — القيمة الكلية: ' + l.feedCost.toLocaleString('ar-EG') + ' ج.م' : ''); qtyStr = l.qtyLabel || mvFmtKg(l.qty); }
+    else if (l.type === 'fish_in') { detailsStr = 'إنزال أسماك حية: ' + (l.fishType || '') + (secName ? ' بحوض: ' + secName : '') + (l.totalCost > 0 ? ' — التكلفة: ' + l.totalCost.toLocaleString('ar-EG') + ' ج.م' : ''); qtyStr = l.fishDisplay || mvFmtKg(l.qty); }
+    else if (l.type === 'fish_out') { detailsStr = 'بيع وتصريف ' + (l.fishType || '') + (secName ? ' من حوض: ' + secName : '') + (l.totalRevenue > 0 ? ' — إجمالي إيراد البيع: ' + l.totalRevenue.toLocaleString('ar-EG') + ' ج.م' : ''); qtyStr = l.qtyLabel || mvFmtKg(l.qty); }
+    else if (l.type === 'zaria_in') { detailsStr = 'زريعة جديدة: ' + (l.fishType || '') + (secName ? ' بالحوض: ' + secName : ''); qtyStr = (l.qty || 0).toLocaleString('ar-EG') + ' قطعة'; }
+    else if (l.type === 'zaria_feed') { detailsStr = 'تغذية قطاع الزريعة' + (secName ? ' بحوض: ' + secName : ''); qtyStr = (l.weight || 0) + ' كجم'; }
+    else if (l.type === 'store_edit' || l.type === 'stock_edit') { detailsStr = (l.feedType ? 'تعديل صنف علف ' + l.feedType + '%' : 'تعديل رصيد المخزن المباشر') + (l.oldQty !== undefined ? ' (القديم كان: ' + mvFmtKg(l.oldQty) + ')' : ''); qtyStr = mvFmtKg(l.qty); }
+    else if (l.type === 'fish_delete' || l.type === 'store_delete') { detailsStr = '🗑️ مسح وإلغاء بيان: ' + (l.fishType || l.feedType || '') + (secName ? ' بـ ' + secName : ''); qtyStr = '-'; }
+    else { detailsStr = typeNameString; }
+
+    if (l.notes) detailsStr += ' — [ملاحظة: ' + l.notes + ']';
+    mv_data.push([typeNameString, l.date || '', timeStr, detailsStr, qtyStr, l.stockBefore || '—', l.stockAfter || '—']);
+  });
+
+  if (!allLogs.length) mv_data.push(['لا توجد عمليات أو حركات مسجلة بالنظام حتى الآن', '', '', '', '', '', '']);
+
+  const ws_mv = XLSX.utils.aoa_to_sheet(mv_data);
+  applyExcelFormatting(ws_mv);
+  XLSX.utils.book_append_sheet(wb, ws_mv, 'سجل التحركات العام');
+
+  const currentFileName = 'تقرير_مزرعة_الأسماك_الشامل_' + new Date().toISOString().split('T')[0] + '.xlsx';
+  exportToFile(wb, currentFileName);
 }
-
 
 function exportSectorData(secKey) {
   if (typeof XLSX === 'undefined') return toast('❌ يرجى الانتظار...', 'err');
@@ -2705,74 +3007,78 @@ function exportSectorData(secKey) {
   const p = sectorPnL(secKey);
   const ws_data = [];
 
-  ws_data.push([`📊 التقرير المالي لـ: ${secName}`,'','','','']);
-  ws_data.push(['تكلفة الأسماك','تكلفة العلف','مصروفات إضافية','التكلفة الكلية','إيرادات المبيعات','الربح / الخسارة']);
+  ws_data.push([`📊 التقرير المالي التفصيلي المنسق لـ: ${secName}`, '', '', '', '', '']);
+  ws_data.push(['تكلفة الأسماك الحالية', 'تكلفة استهلاك الأعلاف الكلية', 'مصروفات تشغيلية إضافية', 'التكلفة الإجمالية للحوض', 'إيرادات المبيعات المحققة', 'صافي الأرباح / الخسائر لهذا الحوض']);
   ws_data.push([
-    p.fishCost.toLocaleString('ar-EG')+' ج.م',
-    p.feedCost.toLocaleString('ar-EG')+' ج.م',
-    (p.extraCost||0)>0?(p.extraCost||0).toLocaleString('ar-EG')+' ج.م':'-',
-    p.totalCost.toLocaleString('ar-EG')+' ج.م',
-    p.revenue.toLocaleString('ar-EG')+' ج.م',
-    (p.net>0?'+':'')+p.net.toLocaleString('ar-EG')+' ج.م'
+    p.fishCost.toLocaleString('ar-EG') + ' ج.م',
+    p.feedCost.toLocaleString('ar-EG') + ' ج.م',
+    (p.extraCost || 0).toLocaleString('ar-EG') + ' ج.م',
+    p.totalCost.toLocaleString('ar-EG') + ' ج.م',
+    p.revenue.toLocaleString('ar-EG') + ' ج.م',
+    (p.net >= 0 ? '+' : '') + p.net.toLocaleString('ar-EG') + ' ج.م'
   ]);
-  ws_data.push(['','','','','','']);
-
-  const extras = Object.values((state.sectors[secKey]||{}).extras||{});
-  if(extras.length>0){
-    ws_data.push([`💸 المصروفات الإضافية لـ ${secName}`,'','']);
-    ws_data.push(['اسم المصروف','المبلغ','التاريخ']);
-    let sumExtra=0;
-    extras.forEach(e=>{ sumExtra+=e.amount||0; ws_data.push([e.name,(e.amount||0).toLocaleString('ar-EG')+' ج.م',fmtDate(e.date)]); });
-    ws_data.push(['📊 إجمالي المصروفات',sumExtra.toLocaleString('ar-EG')+' ج.م','']);
-    ws_data.push(['','','']);
-  }
-
-  ws_data.push([`🐟 الأسماك الحالية في ${secName}`,'','','','','']);
-  ws_data.push(['النوع','الكمية','الوحدة','سعر الشراء','الإجمالي','التاريخ','ملاحظات']);
-  const fishData = state.sectors[secKey]?.fish||{};
-  let sumFishQty=0, sumFishCost=0;
-  Object.values(fishData).forEach(f=>{
-    let cost=(f.value||0)*(f.price||0);
-    sumFishQty+=(f.value||0); sumFishCost+=cost;
-    ws_data.push([f.type,f.value,f.unit==='count'?'قطعة':f.unit==='kg'?'كجم':'طن',
-      f.price?f.price.toLocaleString('ar-EG')+' ج.م':'-',
-      cost>0?cost.toLocaleString('ar-EG')+' ج.م':'-',fmtDate(f.date),f.notes||'']);
+  
+  ws_data.push(['', '', '', '', '', '']);
+  ws_data.push([`🐟 جرد وتكلفة الأسماك المتواجدة حالياً بـ ${secName}`, '', '', '', '', '', '']);
+  ws_data.push(['نوع السمك', 'الكمية المدرجة', 'الوحدة', 'سعر الشراء الفردي', 'إجمالي التكلفة الكلية', 'تاريخ الإنزال', 'ملاحظات وتفاصيل']);
+  const fishData = state.sectors[secKey]?.fish || {};
+  let sumFishQty = 0, sumFishCost = 0;
+  Object.values(fishData).forEach(f => {
+    let cost = (f.value || 0) * (f.price || 0);
+    sumFishQty += (f.value || 0); sumFishCost += cost;
+    ws_data.push([f.type, f.value, f.unit === 'count' ? 'قطعة' : f.unit === 'kg' ? 'كجم' : 'طن', f.price ? f.price.toLocaleString('ar-EG') + ' ج.م' : '-', cost > 0 ? cost.toLocaleString('ar-EG') + ' ج.م' : '0.00 ج.م', fmtDate(f.date), f.notes || '']);
   });
-  if(sumFishQty>0) ws_data.push(['📊 إجمالي الأسماك',sumFishQty.toLocaleString('ar-EG'),'','',sumFishCost>0?sumFishCost.toLocaleString('ar-EG')+' ج.م':'-','','']);
-  ws_data.push(['','','','','','','']);
+  if (sumFishQty > 0) ws_data.push(['📊 إجمالي جرد أسماك القطاع', sumFishQty.toLocaleString('ar-EG'), '', '', sumFishCost.toLocaleString('ar-EG') + ' ج.م', '', '']);
 
-  const zariaList = Object.values((state.sectors[secKey]||{}).zaria||{});
-  if(zariaList.length>0){
-    ws_data.push([`🐟 الزريعة في ${secName} (حسابات منفصلة)`,'','','','']);
-    ws_data.push(['الكمية (عدد)','السعر/قطعة','إجمالي التكلفة','التاريخ','ملاحظات']);
-    let sumZQty=0,sumZCost=0;
-    zariaList.forEach(z=>{
-      sumZQty+=(z.qty||0); const zc=(z.qty||0)*(z.price||0); sumZCost+=zc;
-      ws_data.push([(z.qty||0).toLocaleString('ar-EG'),z.price>0?fmtCost(z.price)+' ج.م':'-',zc>0?fmtCost(zc)+' ج.م':'-',fmtDate(z.date),z.notes||'']);
+  const zariaList = Object.values((state.sectors[secKey] || {}).zaria || {});
+  const zariaFeedList = Object.values((state.sectors[secKey] || {}).zariaFeed || {});
+  const zariaExpList = Object.values((state.sectors[secKey] || {}).zariaExpenses || {});
+  if (zariaList.length > 0 || zariaFeedList.length > 0 || zariaExpList.length > 0) {
+    ws_data.push(['', '', '', '', '', '', '']);
+    ws_data.push([`🐣 جرد وبيانات حوض الزريعة المستقل بـ ${secName}`, '', '', '', '', '', '']);
+    ws_data.push(['بيان العملية', 'الصنف المستهلك / النوع', 'الكمية المستهلكة', 'سعر الحقل', 'التكلفة المنفقة الكلية', 'التاريخ واليوم', 'ملاحظات وتفاصيل']);
+    let currentZariaCostSum = 0;
+    zariaList.forEach(z => {
+      const zc = (z.qty || 0) * (z.price || 0); currentZariaCostSum += zc;
+      ws_data.push(['نزول زريعة بالعدد', z.fishType || 'بوري', (z.qty || 0) + ' قطعة', z.price > 0 ? (zc / z.qty).toFixed(2) + ' ج.م' : '-', zc > 0 ? zc.toLocaleString('ar-EG') + ' ج.م' : '-', fmtDate(z.date), z.notes || '']);
     });
-    ws_data.push(['📊 إجمالي الزريعة',sumZQty.toLocaleString('ar-EG'),'',sumZCost>0?fmtCost(sumZCost)+' ج.م':'-','']);
-    ws_data.push(['','','','','']);
+    zariaFeedList.forEach(zf => {
+      currentZariaCostSum += (zf.cost || 0);
+      ws_data.push(['استهلاك علف للزريعة', 'بروتين ' + (zf.feedType || '30') + '%', (zf.weight || 0) + ' كجم', zf.cost > 0 ? (zf.cost / zf.weight).toFixed(2) + ' ج.م' : '-', (zf.cost || 0) > 0 ? zf.cost.toLocaleString('ar-EG') + ' ج.م' : '-', fmtDate(zf.date), zf.notes || '']);
+    });
+    zariaExpList.forEach(ze => {
+      currentZariaCostSum += (ze.amount || 0);
+      ws_data.push(['مصروفات نثرية للزريعة', ze.name, '-', '-', ze.amount.toLocaleString('ar-EG') + ' ج.م', fmtDate(ze.date), '-']);
+    });
+    ws_data.push(['📊 إجمالي المنفق الكلي على الزريعة بحوض ' + secName, '', '', '', currentZariaCostSum.toLocaleString('ar-EG') + ' ج.م', '', '']);
   }
 
-  ws_data.push([`📋 سجل عمليات ${secName}`,'','','','']);
-  ws_data.push(['العملية','التفاصيل','التأثير المالي','التاريخ','ملاحظات']);
-  const secLogs = Object.values(state.logs||{}).filter(l=>l&&l.sector===secKey).sort((a,b)=>(b[1].ts||0)-(a[1].ts||0));
-  let sumLogCost=0;
-  secLogs.forEach(l=>{
-    let typeName = l.type==='feed_out'?'🍽️ إخراج علف':l.type==='fish_in'?'🐟 إضافة سمك':l.type==='fish_out'?'🐠 بيع سمك':'أخرى';
-    let details  = l.type==='feed_out'?`علف ${l.feedType}% - ${l.qtyLabel}`:l.type==='fish_in'?`${l.fishType} - ${l.fishDisplay||''}`:l.type==='fish_out'?`${l.fishType} - ${l.qtyLabel||''}`:'';
-    let financial= l.type==='fish_in'&&l.cost>0?'-'+l.cost.toLocaleString('ar-EG')+' ج.م':l.type==='fish_out'&&l.totalRevenue>0?'+'+l.totalRevenue.toLocaleString('ar-EG')+' ج.م':'-';
-    if(l.cost>0) sumLogCost+=l.cost;
-    ws_data.push([typeName,details,financial,fmtDate(l.date),l.notes||'']);
+  const extras = Object.values((state.sectors[secKey] || {}).extras || {});
+  if (extras.length > 0) {
+    ws_data.push(['', '', '', '', '', '', '']);
+    ws_data.push([`💸 قائمة المصروفات الإضافية والتشغيلية لـ ${secName}`, '', '', '', '', '', '']);
+    ws_data.push(['اسم المصرف المشغل', 'القيمة المدفوعة', 'تاريخ الصرف اليومي', '', '', '', '']);
+    let totalExtrasSum = 0;
+    extras.forEach(e => { totalExtrasSum += (e.amount || 0); ws_data.push([e.name, (e.amount || 0).toLocaleString('ar-EG') + ' ج.م', fmtDate(e.date), '', '', '', '']); });
+    ws_data.push(['📊 إجمالي المصروفات الإضافية للقطاع', totalExtrasSum.toLocaleString('ar-EG') + ' ج.م', '', '', '', '', '']);
+  }
+
+  ws_data.push(['', '', '', '', '', '', '']);
+  ws_data.push([`📋 أرشيف السجلات والعمليات التاريخية لـ ${secName}`, '', '', '', '', '', '']);
+  ws_data.push(['العملية', 'البيانات والشرح التفصيلي للعملية', 'التأثير المالي المحقق', 'التاريخ اليومي', 'ملاحظات العمل']);
+  const secLogs = Object.values(state.logs || {}).filter(l => l && l.sector === secKey).sort((a, b) => (b.ts || 0) - (a.ts || 0));
+  secLogs.forEach(l => {
+    let typeName = l.type === 'feed_out' ? '🍽️ إخراج علف' : l.type === 'fish_in' ? '🐟 إضافة سمك' : l.type === 'fish_out' ? '🐠 بيع سمك' : 'أخرى';
+    let details = l.type === 'feed_out' ? `علف بروتين ${l.feedType}% - ${l.qtyLabel}` : l.type === 'fish_in' ? `${l.fishType} - ${l.fishDisplay || ''}` : l.type === 'fish_out' ? `${l.fishType} - ${l.qtyLabel || ''}` : '';
+    let financial = l.type === 'fish_in' && l.totalCost > 0 ? '-' + l.totalCost.toLocaleString('ar-EG') + ' ج.م' : l.type === 'fish_out' && l.totalRevenue > 0 ? '+' + l.totalRevenue.toLocaleString('ar-EG') + ' ج.م' : '-';
+    ws_data.push([typeName, details, financial, fmtDate(l.date), l.notes || '']);
   });
-  if(secLogs.length>0) ws_data.push(['📊 إجمالي التكاليف المسجلة','',sumLogCost>0?sumLogCost.toLocaleString('ar-EG')+' ج.م':'-','','']);
 
   const ws = XLSX.utils.aoa_to_sheet(ws_data);
-  applyExcelFormatting(ws, ws_data);
+  applyExcelFormatting(ws);
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, secName);
-  exportToFile(wb, `تقرير_${secName}_${new Date().toLocaleDateString('en-CA')}.xlsx`);
-  toast(`✅ تم تصدير تقرير ${secName}`,'ok');
+  XLSX.utils.book_append_sheet(wb, ws, secName.substring(0, 25));
+  exportToFile(wb, `تقرير_قطاع_${secName}_${new Date().toISOString().split('T')[0]}.xlsx`);
 }
 
 // ══════════════════════════════════════════
