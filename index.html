@@ -2802,19 +2802,19 @@ function exportAllData() {
   if (typeof XLSX === 'undefined') return toast('❌ يرجى الانتظار لحين تحميل المكتبات...', 'err');
   const wb = XLSX.utils.book_new();
 
-  // ══════════════════════════════════════
-  // الورقة الأولي: لوحة التحكم والتقرير الشامل
-  // ══════════════════════════════════════
+  // ════════════════════════════════════════════════════════════════
+  // الورقة 1: لوحة التحكم والإحصائيات الرئيسية
+  // ════════════════════════════════════════════════════════════════
   const totalFish = Object.values(state.sectors).reduce((s, sec) => { if (sec && sec.fish) Object.values(sec.fish).forEach(f => s += fishKg(f)); return s; }, 0);
   const totalFeed = Object.values(state.store).reduce((s, v) => s + stockToKg(v), 0);
   const farmCost = totalFarmCost(), feedCost = totalFeedCost(), harvestRev = totalHarvestRevenue();
   const extraAll = Object.keys(SECTORS).reduce((s, k) => s + sectorExtraCost(k), 0);
   const netPnL = harvestRev - (farmCost + feedCost + extraAll);
-  
-  const ws_data = [];
-  ws_data.push(['📊 إحصائيات المزرعة السمكية الرئيسية الشاملة', '', '', '', '', '']);
-  ws_data.push(['إجمالي الأسماك بالمزرعة', 'إجمالي العلف بالمخزن', 'إجمالي تكلفة الأسماك', 'إجمالي تكلفة العلف المسحوب', 'إيرادات مبيعات التصريف', 'صافي الربح أو الخسارة العام']);
-  ws_data.push([
+
+  const ws_dash = [];
+  ws_dash.push(['📊 إحصائيات المزرعة السمكية الرئيسية الشاملة', '', '', '', '', '']);
+  ws_dash.push(['إجمالي الأسماك بالمزرعة', 'إجمالي العلف بالمخزن', 'إجمالي تكلفة الأسماك', 'إجمالي تكلفة العلف المسحوب', 'إيرادات مبيعات التصريف', 'صافي الربح أو الخسارة العام']);
+  ws_dash.push([
     totalFish >= 1000 ? (totalFish / 1000).toFixed(2) + ' طن' : totalFish.toFixed(0) + ' كجم',
     totalFeed >= 1000 ? (totalFeed / 1000).toFixed(2) + ' طن' : totalFeed.toFixed(0) + ' كجم',
     farmCost.toLocaleString('ar-EG') + ' ج.م',
@@ -2822,142 +2822,352 @@ function exportAllData() {
     harvestRev.toLocaleString('ar-EG') + ' ج.م',
     (netPnL >= 0 ? '+' : '') + netPnL.toLocaleString('ar-EG') + ' ج.م'
   ]);
-  
-  ws_data.push(['', '', '', '', '', '']);
-  ws_data.push(['📈 تقرير الأداء المالي والأرباح لكل قطاع حوض نشط', '', '', '', '', '', '']);
-  ws_data.push(['اسم قطاع الحوض السمكي', 'تكلفة الأسماك الكبيرة', 'تكلفة استهلاك العلف', 'المصروفات الإضافية', 'إجمالي التكاليف الكلية', 'إيرادات التصريف والبيع', 'صافي ربحية القطاع (الربح/الخسارة)']);
-  
-  let sumFC = 0, sumFdC = 0, sumExC = 0, sumTC = 0, sumRv = 0, sumNt = 0;
+
+  const ws_d = XLSX.utils.aoa_to_sheet(ws_dash);
+  applyExcelFormatting(ws_d);
+  XLSX.utils.book_append_sheet(wb, ws_d, 'لوحة التحكم');
+
+  // ════════════════════════════════════════════════════════════════
+  // الورقة 2: بيانات الأسماك لجميع القطاعات (شيت منفصل)
+  // ════════════════════════════════════════════════════════════════
+  const ws_fish = [];
+  ws_fish.push(['🐟 جرد وتفاصيل الأسماك لجميع القطاعات', '', '', '', '', '', '', '']);
+  ws_fish.push(['اسم القطاع', 'نوع السمكة', 'الكمية المدرجة', 'وحدة القياس', 'سعر الشراء الفردي', 'إجمالي التكلفة المدفوعة', 'تاريخ الإنزال', 'ملاحظات وتفاصيل']);
+
+  let grandFishQty = 0, grandFishCost = 0;
+  Object.entries(SECTORS).forEach(([secKey, sec]) => {
+    const fishArr = Object.values((state.sectors[secKey] || {}).fish || {});
+    let secQty = 0, secCost = 0;
+    fishArr.forEach(f => {
+      const c = (f.value || 0) * (f.price || 0);
+      secQty += (f.value || 0); secCost += c;
+      ws_fish.push([
+        sec.name,
+        f.type || '-',
+        f.value || 0,
+        f.unit === 'count' ? 'قطعة' : f.unit === 'kg' ? 'كجم' : 'طن',
+        f.price ? f.price.toLocaleString('ar-EG') + ' ج.م' : '-',
+        c > 0 ? c.toLocaleString('ar-EG') + ' ج.م' : '0.00 ج.م',
+        fmtDate(f.date),
+        f.notes || ''
+      ]);
+    });
+    if (fishArr.length > 0) {
+      ws_fish.push(['📊 إجمالي ' + sec.name, '', secQty.toLocaleString('ar-EG'), '', '', secCost > 0 ? secCost.toLocaleString('ar-EG') + ' ج.م' : '0.00 ج.م', '', '']);
+    }
+    grandFishQty += secQty; grandFishCost += secCost;
+  });
+
+  if (grandFishQty > 0 || grandFishCost > 0) {
+    ws_fish.push(['📊 الإجمالي العام لجميع القطاعات', '', grandFishQty.toLocaleString('ar-EG'), '', '', grandFishCost > 0 ? grandFishCost.toLocaleString('ar-EG') + ' ج.م' : '0.00 ج.م', '', '']);
+  } else {
+    ws_fish.push(['لا توجد أسماك مسجلة حالياً في أي قطاع', '', '', '', '', '', '', '']);
+  }
+
+  const ws_f = XLSX.utils.aoa_to_sheet(ws_fish);
+  applyExcelFormatting(ws_f);
+  XLSX.utils.book_append_sheet(wb, ws_f, 'الأسماك');
+
+  // ════════════════════════════════════════════════════════════════
+  // الورقة 3: بيانات الزريعة لجميع القطاعات (شيت منفصل)
+  // ════════════════════════════════════════════════════════════════
+  const ws_zaria = [];
+  ws_zaria.push(['🐣 سجل الزريعة لجميع القطاعات', '', '', '', '', '', '']);
+  ws_zaria.push(['اسم القطاع', 'نوع الزريعة', 'الكمية (قطعة)', 'سعر القطعة', 'إجمالي التكلفة', 'تاريخ الإنزال', 'ملاحظات']);
+
+  let grandZariaQty = 0, grandZariaCost = 0;
+  Object.entries(SECTORS).forEach(([secKey, sec]) => {
+    const zariaList = Object.values((state.sectors[secKey] || {}).zaria || {});
+    let secQty = 0, secCost = 0;
+    zariaList.forEach(z => {
+      const zc = (z.qty || 0) * (z.price || 0);
+      secQty += (z.qty || 0); secCost += zc;
+      ws_zaria.push([
+        sec.name,
+        z.fishType || 'بوري',
+        (z.qty || 0).toLocaleString('ar-EG') + ' قطعة',
+        z.price > 0 ? z.price.toLocaleString('ar-EG') + ' ج.م' : '-',
+        zc > 0 ? zc.toLocaleString('ar-EG') + ' ج.م' : '-',
+        fmtDate(z.date),
+        z.notes || ''
+      ]);
+    });
+    if (zariaList.length > 0) {
+      ws_zaria.push(['📊 إجمالي زريعة ' + sec.name, '', secQty.toLocaleString('ar-EG') + ' قطعة', '', secCost > 0 ? secCost.toLocaleString('ar-EG') + ' ج.م' : '0.00 ج.م', '', '']);
+    }
+    grandZariaQty += secQty; grandZariaCost += secCost;
+  });
+
+  if (grandZariaQty > 0 || grandZariaCost > 0) {
+    ws_zaria.push(['📊 الإجمالي العام لزريعة جميع القطاعات', '', grandZariaQty.toLocaleString('ar-EG') + ' قطعة', '', grandZariaCost > 0 ? grandZariaCost.toLocaleString('ar-EG') + ' ج.م' : '0.00 ج.م', '', '']);
+  } else {
+    ws_zaria.push(['لا توجد سجلات زريعة مسجلة في أي قطاع', '', '', '', '', '', '']);
+  }
+
+  const ws_z = XLSX.utils.aoa_to_sheet(ws_zaria);
+  applyExcelFormatting(ws_z);
+  XLSX.utils.book_append_sheet(wb, ws_z, 'الزريعة');
+
+  // ════════════════════════════════════════════════════════════════
+  // الورقة 4: علف الزريعة لجميع القطاعات (شيت منفصل)
+  // ════════════════════════════════════════════════════════════════
+  const ws_zfeed = [];
+  ws_zfeed.push(['🌿 سجل علف الزريعة لجميع القطاعات', '', '', '', '', '', '']);
+  ws_zfeed.push(['اسم القطاع', 'نوع العلف (بروتين)', 'حالة الطفو', 'الكمية (كجم)', 'سعر الكيلو', 'إجمالي التكلفة', 'تاريخ التغذية', 'ملاحظات']);
+
+  let grandZFeedKg = 0, grandZFeedCost = 0;
+  Object.entries(SECTORS).forEach(([secKey, sec]) => {
+    const zariaFeedList = Object.values((state.sectors[secKey] || {}).zariaFeed || {});
+    let secKg = 0, secCost = 0;
+    zariaFeedList.forEach(zf => {
+      const unitPrice = (zf.weight > 0 && zf.cost > 0) ? (zf.cost / zf.weight).toFixed(2) : '-';
+      secKg += (zf.weight || 0); secCost += (zf.cost || 0);
+      ws_zfeed.push([
+        sec.name,
+        'بروتين ' + (zf.feedType || '30') + '%',
+        zf.float === 'float' ? 'عايم / طافي' : 'غاطس',
+        (zf.weight || 0).toLocaleString('ar-EG') + ' كجم',
+        unitPrice !== '-' ? unitPrice + ' ج.م' : '-',
+        (zf.cost || 0) > 0 ? zf.cost.toLocaleString('ar-EG') + ' ج.م' : 'بدون سعر',
+        fmtDate(zf.date),
+        zf.notes || ''
+      ]);
+    });
+    if (zariaFeedList.length > 0) {
+      ws_zfeed.push(['📊 إجمالي علف زريعة ' + sec.name, '', '', secKg.toLocaleString('ar-EG') + ' كجم', '', secCost > 0 ? secCost.toLocaleString('ar-EG') + ' ج.م' : '0.00 ج.م', '', '']);
+    }
+    grandZFeedKg += secKg; grandZFeedCost += secCost;
+  });
+
+  if (grandZFeedKg > 0 || grandZFeedCost > 0) {
+    ws_zfeed.push(['📊 الإجمالي العام لعلف الزريعة', '', '', grandZFeedKg.toLocaleString('ar-EG') + ' كجم', '', grandZFeedCost > 0 ? grandZFeedCost.toLocaleString('ar-EG') + ' ج.م' : '0.00 ج.م', '', '']);
+  } else {
+    ws_zfeed.push(['لا توجد سجلات علف زريعة مسجلة في أي قطاع', '', '', '', '', '', '', '']);
+  }
+
+  const ws_zf = XLSX.utils.aoa_to_sheet(ws_zfeed);
+  applyExcelFormatting(ws_zf);
+  XLSX.utils.book_append_sheet(wb, ws_zf, 'علف الزريعة');
+
+  // ════════════════════════════════════════════════════════════════
+  // الورقة 5: مصاريف الزريعة لجميع القطاعات (شيت منفصل)
+  // ════════════════════════════════════════════════════════════════
+  const ws_zexp = [];
+  ws_zexp.push(['💸 مصاريف الزريعة لجميع القطاعات', '', '', '', '']);
+  ws_zexp.push(['اسم القطاع', 'بند المصروف', 'قيمة المصروف', 'تاريخ الصرف', 'ملاحظات']);
+
+  let grandZExpCost = 0;
+  Object.entries(SECTORS).forEach(([secKey, sec]) => {
+    const zariaExpList = Object.values((state.sectors[secKey] || {}).zariaExpenses || {});
+    let secCost = 0;
+    zariaExpList.forEach(ze => {
+      secCost += (ze.amount || 0);
+      ws_zexp.push([
+        sec.name,
+        ze.name || '-',
+        (ze.amount || 0).toLocaleString('ar-EG') + ' ج.م',
+        fmtDate(ze.date),
+        ''
+      ]);
+    });
+    if (zariaExpList.length > 0) {
+      ws_zexp.push(['📊 إجمالي مصاريف زريعة ' + sec.name, '', secCost > 0 ? secCost.toLocaleString('ar-EG') + ' ج.م' : '0.00 ج.م', '', '']);
+    }
+    grandZExpCost += secCost;
+  });
+
+  if (grandZExpCost > 0) {
+    ws_zexp.push(['📊 الإجمالي العام لمصاريف الزريعة', '', grandZExpCost.toLocaleString('ar-EG') + ' ج.م', '', '']);
+  } else {
+    ws_zexp.push(['لا توجد مصاريف زريعة مسجلة في أي قطاع', '', '', '', '']);
+  }
+
+  const ws_ze = XLSX.utils.aoa_to_sheet(ws_zexp);
+  applyExcelFormatting(ws_ze);
+  XLSX.utils.book_append_sheet(wb, ws_ze, 'مصاريف الزريعة');
+
+  // ════════════════════════════════════════════════════════════════
+  // الورقة 6: المصاريف التشغيلية الإضافية لجميع القطاعات (شيت منفصل)
+  // ════════════════════════════════════════════════════════════════
+  const ws_extras = [];
+  ws_extras.push(['💰 المصاريف التشغيلية الإضافية لجميع القطاعات', '', '', '', '']);
+  ws_extras.push(['اسم القطاع', 'بند المصروف النثري', 'قيمة المصروف المدفوع', 'تاريخ الصرف', 'ملاحظات']);
+
+  let grandExtraCost = 0;
+  Object.entries(SECTORS).forEach(([secKey, sec]) => {
+    const extras = Object.values((state.sectors[secKey] || {}).extras || {});
+    let secCost = 0;
+    extras.forEach(e => {
+      secCost += (e.amount || 0);
+      ws_extras.push([
+        sec.name,
+        e.name || '-',
+        (e.amount || 0).toLocaleString('ar-EG') + ' ج.م',
+        fmtDate(e.date),
+        ''
+      ]);
+    });
+    if (extras.length > 0) {
+      ws_extras.push(['📊 إجمالي مصاريف ' + sec.name, '', secCost > 0 ? secCost.toLocaleString('ar-EG') + ' ج.م' : '0.00 ج.م', '', '']);
+    }
+    grandExtraCost += secCost;
+  });
+
+  if (grandExtraCost > 0) {
+    ws_extras.push(['📊 الإجمالي العام للمصاريف التشغيلية', '', grandExtraCost.toLocaleString('ar-EG') + ' ج.م', '', '']);
+  } else {
+    ws_extras.push(['لا توجد مصاريف تشغيلية مسجلة في أي قطاع', '', '', '', '']);
+  }
+
+  const ws_ex = XLSX.utils.aoa_to_sheet(ws_extras);
+  applyExcelFormatting(ws_ex);
+  XLSX.utils.book_append_sheet(wb, ws_ex, 'المصاريف التشغيلية');
+
+  // ════════════════════════════════════════════════════════════════
+  // الورقة 7: تكاليف استهلاك العلف لجميع القطاعات (شيت منفصل)
+  // ════════════════════════════════════════════════════════════════
+  const ws_feedcost = [];
+  ws_feedcost.push(['🍽️ تكاليف استهلاك العلف لجميع القطاعات', '', '', '', '', '']);
+  ws_feedcost.push(['اسم القطاع', 'تاريخ السحب', 'نوع العلف', 'حالة الطفو', 'الكمية المسحوبة', 'تكلفة العلف']);
+
+  let grandFeedKg = 0, grandFeedC = 0;
+  Object.entries(SECTORS).forEach(([secKey, sec]) => {
+    const feedLogs = Object.values(state.logs || {}).filter(l => l && l.type === 'feed_out' && l.sector === secKey);
+    let secKg = 0, secCost = 0;
+    feedLogs.forEach(l => {
+      secKg += (l.qty || 0); secCost += (l.feedCost || 0);
+      ws_feedcost.push([
+        sec.name,
+        l.date || '-',
+        'بروتين ' + (l.feedType || '-') + '%',
+        l.float === 'float' ? 'عايم / طافي' : 'غاطس',
+        (l.qtyLabel || mvFmtKg(l.qty)),
+        (l.feedCost || 0) > 0 ? l.feedCost.toLocaleString('ar-EG') + ' ج.م' : '-'
+      ]);
+    });
+    if (feedLogs.length > 0) {
+      ws_feedcost.push(['📊 إجمالي علف ' + sec.name, '', '', '', secKg > 0 ? mvFmtKg(secKg) : '-', secCost > 0 ? secCost.toLocaleString('ar-EG') + ' ج.م' : '0.00 ج.م']);
+    }
+    grandFeedKg += secKg; grandFeedC += secCost;
+  });
+
+  if (grandFeedKg > 0 || grandFeedC > 0) {
+    ws_feedcost.push(['📊 الإجمالي العام لاستهلاك العلف', '', '', '', grandFeedKg > 0 ? mvFmtKg(grandFeedKg) : '-', grandFeedC > 0 ? grandFeedC.toLocaleString('ar-EG') + ' ج.م' : '0.00 ج.م']);
+  } else {
+    ws_feedcost.push(['لا توجد سجلات استهلاك علف مسجلة في أي قطاع', '', '', '', '', '']);
+  }
+
+  const ws_fc = XLSX.utils.aoa_to_sheet(ws_feedcost);
+  applyExcelFormatting(ws_fc);
+  XLSX.utils.book_append_sheet(wb, ws_fc, 'تكاليف العلف');
+
+  // ════════════════════════════════════════════════════════════════
+  // الورقة 8: تقرير الأداء المالي والأرباح لكل قطاع (شيت منفصل)
+  // ════════════════════════════════════════════════════════════════
+  const ws_pnl = [];
+  ws_pnl.push(['📈 تقرير الأداء المالي والأرباح لكل قطاع', '', '', '', '', '', '']);
+  ws_pnl.push(['اسم قطاع الحوض السمكي', 'تكلفة الأسماك', 'تكلفة استهلاك العلف', 'تكلفة الزريعة', 'المصروفات الإضافية', 'إجمالي التكاليف الكلية', 'إيرادات التصريف والبيع', 'صافي الربح/الخسارة']);
+
+  let sumFC = 0, sumFdC = 0, sumZC = 0, sumExC = 0, sumTC = 0, sumRv = 0, sumNt = 0;
   Object.entries(SECTORS).forEach(([k, sec]) => {
     const p = sectorPnL(k);
-    sumFC += p.fishCost; sumFdC += p.feedCost; sumExC += (p.extraCost || 0); sumTC += p.totalCost; sumRv += p.revenue; sumNt += p.net;
-    ws_data.push([
+    const zc = sectorZariaCost(k) + sectorZariaFeedCost(k) + sectorZariaExpenseCost(k);
+    const totalC = p.fishCost + p.feedCost + zc + (p.extraCost || 0);
+    sumFC += p.fishCost; sumFdC += p.feedCost; sumZC += zc; sumExC += (p.extraCost || 0); sumTC += totalC; sumRv += p.revenue; sumNt += (p.revenue - totalC);
+    ws_pnl.push([
       sec.name,
       p.fishCost.toLocaleString('ar-EG') + ' ج.م',
-      p.feedCost.toLocaleString('ar-EG') + ' ج.m',
+      p.feedCost.toLocaleString('ar-EG') + ' ج.م',
+      zc > 0 ? zc.toLocaleString('ar-EG') + ' ج.م' : '0.00 ج.م',
       (p.extraCost || 0) > 0 ? (p.extraCost || 0).toLocaleString('ar-EG') + ' ج.م' : '0.00 ج.م',
-      p.totalCost.toLocaleString('ar-EG') + ' ج.م',
+      totalC.toLocaleString('ar-EG') + ' ج.م',
       p.revenue.toLocaleString('ar-EG') + ' ج.م',
-      (p.net >= 0 ? '+' : '') + p.net.toLocaleString('ar-EG') + ' ج.م'
+      ((p.revenue - totalC) >= 0 ? '+' : '') + (p.revenue - totalC).toLocaleString('ar-EG') + ' ج.م'
     ]);
   });
-  ws_data.push([
+  ws_pnl.push([
     '📊 إجمالي كلف ومبيعات أحواض المزرعة',
     sumFC.toLocaleString('ar-EG') + ' ج.م',
     sumFdC.toLocaleString('ar-EG') + ' ج.م',
+    sumZC > 0 ? sumZC.toLocaleString('ar-EG') + ' ج.م' : '0.00 ج.م',
     sumExC.toLocaleString('ar-EG') + ' ج.م',
     sumTC.toLocaleString('ar-EG') + ' ج.م',
     sumRv.toLocaleString('ar-EG') + ' ج.م',
     (sumNt >= 0 ? '+' : '') + sumNt.toLocaleString('ar-EG') + ' ج.م'
   ]);
 
-  ws_data.push(['', '', '', '', '', '']);
-  ws_data.push(['🏭 أرصدة الأعلاف المتاحة بالمخزن الحالي', '', '', '', '', '']);
-  ws_data.push(['نوع الصنف العلفي', 'حالة و نوع الطفو', 'شيكارة رصيد (25 كجم)', 'شيكارة رصيد (50 كجم)', 'رصيد فرط (بالطن)', 'إجمالي الوزن الصافي الكلي']);
-  
+  const ws_p = XLSX.utils.aoa_to_sheet(ws_pnl);
+  applyExcelFormatting(ws_p);
+  XLSX.utils.book_append_sheet(wb, ws_p, 'الأداء المالي');
+
+  // ════════════════════════════════════════════════════════════════
+  // الورقة 9: أرصدة الأعلاف المتاحة بالمخزن الحالي (شيت منفصل)
+  // ════════════════════════════════════════════════════════════════
+  const ws_store = [];
+  ws_store.push(['🏭 أرصدة الأعلاف المتاحة بالمخزن الحالي', '', '', '', '', '']);
+  ws_store.push(['نوع الصنف العلفي', 'حالة و نوع الطفو', 'شيكارة رصيد (25 كجم)', 'شيكارة رصيد (50 كجم)', 'رصيد فرط (بالطن)', 'إجمالي الوزن الصافي الكلي']);
+
   let sb25 = 0, sb50 = 0, ston = 0, skg = 0;
   ['30', '18', '25'].forEach(t => {
     ['float', 'sink'].forEach(fl => {
       const s = getStock(t, fl), kg = stockToKg(s);
       if (kg === 0) return;
       sb25 += (s.b25 || 0); sb50 += (s.b50 || 0); ston += (s.ton || 0); skg += kg;
-      ws_data.push(['علف بروتين ' + t + '%', fl === 'float' ? '🌊 عايم / طافي' : '⬇️ غاطس أسفل', s.b25 || 0, s.b50 || 0, s.ton || 0, kg.toFixed(1) + ' كجم']);
+      ws_store.push(['علف بروتين ' + t + '%', fl === 'float' ? 'عايم / طافي' : 'غاطس أسفل', s.b25 || 0, s.b50 || 0, s.ton || 0, kg.toFixed(1) + ' كجم']);
     });
   });
-  ws_data.push(['📊 إجمالي جرد رصيد المخازن', '', sb25, sb50, ston, skg.toFixed(1) + ' كجم']);
+  ws_store.push(['📊 إجمالي جرد رصيد المخازن', '', sb25, sb50, ston, skg.toFixed(1) + ' كجم']);
 
-  const ws_main = XLSX.utils.aoa_to_sheet(ws_data);
-  applyExcelFormatting(ws_main);
-  XLSX.utils.book_append_sheet(wb, ws_main, 'لوحة التحكم والمخزن');
+  const ws_st = XLSX.utils.aoa_to_sheet(ws_store);
+  applyExcelFormatting(ws_st);
+  XLSX.utils.book_append_sheet(wb, ws_st, 'المخزن');
 
-  // ══════════════════════════════════════
-  // الأوراق التالية: ورقة تفصيلية منفصلة لكل قطاع
-  // ══════════════════════════════════════
+  // ════════════════════════════════════════════════════════════════
+  // الورقة 10: سجل التصريف والمبيعات لجميع القطاعات (شيت منفصل)
+  // ════════════════════════════════════════════════════════════════
+  const ws_harvest = [];
+  ws_harvest.push(['💰 سجل التصريف والمبيعات لجميع القطاعات', '', '', '', '', '', '']);
+  ws_harvest.push(['اسم القطاع', 'تاريخ التصريف', 'نوع السمكة', 'الكمية', 'سعر البيع', 'إجمالي الإيراد', 'ملاحظات']);
+
+  let grandHarvest = 0;
   Object.entries(SECTORS).forEach(([secKey, sec]) => {
-    const sn = sec.name, p = sectorPnL(secKey), sd = [];
-    
-    sd.push(['📊 التقرير التحليلي الشامل والمنظم لـ: ' + sn, '', '', '', '', '', '']);
-    sd.push(['تكلفة الأسماك المضافة', 'تكلفة استهلاك الأعلاف', 'مصروفات تشغيلية إضافية', 'التكلفة الكلية للقطاع', 'إجمالي مبيعات التصريف', 'صافي الأرباح / الخسائر الحالية']);
-    sd.push([
-      p.fishCost.toLocaleString('ar-EG') + ' ج.م',
-      p.feedCost.toLocaleString('ar-EG') + ' ج.م',
-      (p.extraCost || 0).toLocaleString('ar-EG') + ' ج.م',
-      p.totalCost.toLocaleString('ar-EG') + ' ج.م',
-      p.revenue.toLocaleString('ar-EG') + ' ج.م',
-      (p.net >= 0 ? '+' : '') + p.net.toLocaleString('ar-EG') + ' ج.م'
-    ]);
-    
-    // حصر جرد الأسماك بالقطاع
-    sd.push(['', '', '', '', '', '', '']);
-    const fishArr = Object.values(state.sectors[secKey]?.fish || {});
-    sd.push(['🐟 جرد وتفاصيل الأسماك المخزنة الحالية في ' + sn, '', '', '', '', '', '']);
-    sd.push(['نوع السمكة', 'الكمية المدرجة', 'وحدة القياس', 'سعر الشراء الفردي', 'إجمالي التكلفة المدفوعة', 'تاريخ الإنزال', 'ملاحظات وتفاصيل']);
-    if (fishArr.length > 0) {
-      let sq = 0, sc = 0;
-      fishArr.forEach(f => {
-        const c = (f.value || 0) * (f.price || 0); sq += (f.value || 0); sc += c;
-        sd.push([f.type, f.value, f.unit === 'count' ? 'قطعة' : f.unit === 'kg' ? 'كجم' : 'طن', f.price ? f.price.toLocaleString('ar-EG') + ' ج.م' : '-', c > 0 ? c.toLocaleString('ar-EG') + ' ج.م' : '0.00 ج.م', fmtDate(f.date), f.notes || '']);
-      });
-      sd.push(['📊 إجمالي الأسماك المضافة', sq.toLocaleString('ar-EG'), '', '', sc > 0 ? sc.toLocaleString('ar-EG') + ' ج.م' : '0.00 ج.م', '', '']);
-    } else {
-      sd.push(['لا توجد أسماك كبيرة مسجلة حالياً في هذا الحوض', '', '', '', '', '', '']);
+    const harvestLogs = Object.values(state.logs || {}).filter(l => l && l.type === 'fish_out' && l.sector === secKey);
+    let secRev = 0;
+    harvestLogs.forEach(l => {
+      secRev += (l.totalRevenue || 0);
+      ws_harvest.push([
+        sec.name,
+        l.date || '-',
+        l.fishType || '-',
+        l.qtyLabel || mvFmtKg(l.qty),
+        '',
+        (l.totalRevenue || 0) > 0 ? l.totalRevenue.toLocaleString('ar-EG') + ' ج.م' : '-',
+        l.notes || ''
+      ]);
+    });
+    if (harvestLogs.length > 0) {
+      ws_harvest.push(['📊 إجمالي تصريف ' + sec.name, '', '', '', '', secRev > 0 ? secRev.toLocaleString('ar-EG') + ' ج.م' : '0.00 ج.م', '']);
     }
-
-    // جرد قسم الزريعة (بالكامل شامل علف الزريعة المنفصل والمصاريف)
-    sd.push(['', '', '', '', '', '', '']);
-    const zariaList = Object.values((state.sectors[secKey] || {}).zaria || {});
-    const zariaFeedList = Object.values((state.sectors[secKey] || {}).zariaFeed || {});
-    const zariaExpList = Object.values((state.sectors[secKey] || {}).zariaExpenses || {});
-    
-    sd.push(['🐣 السجل الشامل لزريعة ' + sn + ' (حسابات مستقلة)', '', '', '', '', '', '']);
-    if (zariaList.length > 0 || zariaFeedList.length > 0 || zariaExpList.length > 0) {
-      sd.push(['نوع البيان والعملية', 'التفاصيل / الصنف', 'الكمية المستهلكة', 'سعر الوحدة', 'القيمة الكلية / التكلفة', 'التاريخ المسجل', 'ملاحظات']);
-      
-      let zariaTotalCostVal = 0;
-      zariaList.forEach(z => {
-        const zc = (z.qty || 0) * (z.price || 0); zariaTotalCostVal += zc;
-        sd.push(['إنزال دفعة زريعة', z.fishType || 'بوري', (z.qty || 0) + ' قطعة', z.price > 0 ? (zc / z.qty).toFixed(2) + ' ج.م' : '-', zc > 0 ? zc.toLocaleString('ar-EG') + ' ج.م' : '-', fmtDate(z.date), z.notes || '']);
-      });
-      zariaFeedList.forEach(zf => {
-        zariaTotalCostVal += (zf.cost || 0);
-        sd.push(['استهلاك علف زريعة', 'بروتين ' + (zf.feedType || '30') + '% (' + (zf.float === 'float' ? 'عايم' : 'غاطس') + ')', (zf.weight || 0) + ' كجم', zf.cost > 0 ? ((zf.cost || 0) / zf.weight).toFixed(2) + ' ج.م' : '-', (zf.cost || 0) > 0 ? zf.cost.toLocaleString('ar-EG') + ' ج.م' : 'بدون سعر', fmtDate(zf.date), zf.notes || '']);
-      });
-      zariaExpList.forEach(ze => {
-        zariaTotalCostVal += (ze.amount || 0);
-        sd.push(['مصروفات زريعة أخرى', ze.name, '-', '-', ze.amount.toLocaleString('ar-EG') + ' ج.م', fmtDate(ze.date), '-']);
-      });
-      sd.push(['📊 الإجمالي الكلي المنفق على الزريعة بحوض ' + sn, '', '', '', zariaTotalCostVal.toLocaleString('ar-EG') + ' ج.م', '', '']);
-    } else {
-      sd.push(['لا توجد سجلات زريعة أو تغذية زريعة منزلة في هذا الحوض', '', '', '', '', '', '']);
-    }
-
-    // المصروفات النثرية والتشغيلية الإضافية
-    sd.push(['', '', '', '', '', '', '']);
-    const extras = Object.values((state.sectors[secKey] || {}).extras || {});
-    sd.push(['💸 المصروفات التشغيلية الإضافية المرتبطة بـ ' + sn, '', '', '', '', '', '']);
-    sd.push(['بند المصروف النثري', 'قيمة المصروف المدفوع', 'تاريخ الصرف المعين', '', '', '', '']);
-    if (extras.length > 0) {
-      let sumExtra = 0;
-      extras.forEach(e => { sumExtra += (e.amount || 0); sd.push([e.name, (e.amount || 0).toLocaleString('ar-EG') + ' ج.م', fmtDate(e.date), '', '', '', '']); });
-      sd.push(['📊 إجمالي المصاريف التشغيلية للحوض', sumExtra.toLocaleString('ar-EG') + ' ج.م', '', '', '', '', '']);
-    } else {
-      sd.push(['لا توجد مصروفات نثرية أو تشغيلية مسجلة لهذا الحوض', '', '', '', '', '', '']);
-    }
-
-    const ws_sec = XLSX.utils.aoa_to_sheet(sd);
-    applyExcelFormatting(ws_sec);
-    // تفادي مشكلة طول اسم الورقة في إكسيل (أقصى حد 31 حرف)
-    const validSheetName = sn.length > 25 ? sn.substring(0, 25) : sn;
-    XLSX.utils.book_append_sheet(wb, ws_sec, validSheetName);
+    grandHarvest += secRev;
   });
 
-  // ══════════════════════════════════════
+  if (grandHarvest > 0) {
+    ws_harvest.push(['📊 الإجمالي العام للتصريف', '', '', '', '', grandHarvest.toLocaleString('ar-EG') + ' ج.م', '']);
+  } else {
+    ws_harvest.push(['لا توجد سجلات تصريف مسجلة في أي قطاع', '', '', '', '', '', '']);
+  }
+
+  const ws_hv = XLSX.utils.aoa_to_sheet(ws_harvest);
+  applyExcelFormatting(ws_hv);
+  XLSX.utils.book_append_sheet(wb, ws_hv, 'التصريف والمبيعات');
+
+  // ════════════════════════════════════════════════════════════════
   // الورقة الأخيرة: السجل الكامل الشامل للحركات والعمليات
-  // ══════════════════════════════════════
+  // ════════════════════════════════════════════════════════════════
   const mv_data = [];
   mv_data.push(['🔄 السجل التاريخي والرقابي الكامل لكل حركات المزرعة والمخزن', '', '', '', '', '', '']);
   mv_data.push(['نوع الحركة المسجلة', 'التاريخ واليوم', 'توقيت الحركة', 'بيانات وتفاصيل الحركة الشاملة', 'الكمية / القياس', 'رصيد المخزن (قبل)', 'رصيد المخزن (بعد)']);
-  
+
   const typeMapEx = {
     store_in: '➕ إدخال علف للمخزن', feed_out: '➖ إخراج علف للقطاع', fish_in: '🐟 إدخال أسماك وأوزان',
     fish_out: '💰 إخراج أسماك (تصريف ومبيعات)', zaria_in: '🐣 إدخال زريعة جديدة', zaria_feed: '🌿 علف زريعة منفصل',
@@ -3001,95 +3211,196 @@ function exportAllData() {
   exportToFile(wb, currentFileName);
 }
 
-// دالة مساعدة: تجمع بيانات قطاع واحد وتعيد مصفوفة wsData
-function buildSectorSheetData(secKey) {
-  const sec = SECTORS[secKey];
-  const secName = sec ? sec.name : secKey;
-  const byDate = {};
-  const ensureDate = (d) => {
-    if (!byDate[d]) byDate[d] = {revenue:0,fishCostIn:0,feedCost:0,fishFeedKg:0,fryCost:0,fryFeedKg:0,fryQty:0,fishQtyIn:0,fishQtyOut:0,extraCost:0};
-  };
-  Object.values(state.logs||{}).forEach(l=>{
-    if(!l||l.sector!==secKey)return;
-    const d=l.date||'';if(!d)return;ensureDate(d);const row=byDate[d];
-    if(l.type==='feed_out'){row.feedCost+=(l.feedCost||0);row.fishFeedKg+=(l.qty||0);}
-    if(l.type==='fish_in'){row.fishQtyIn+=(l.qty||0);row.fishCostIn+=(l.totalCost||0);}
-    if(l.type==='fish_out'){row.revenue+=(l.totalRevenue||0);row.fishQtyOut+=(l.qty||0);}
+// ════════════════════════════════════════════════════════════════
+// دالة مساعدة: تبني أوراق العمل المنفصلة لكل نوع بيانات
+// كل نوع بيانات (أسماك، زريعة، علف زريعة، مصاريف زريعة، مصاريف تشغيلية، علف أسماك، تصريف)
+// يكون في شيت منفصل داخل ملف الإكسيل
+// ════════════════════════════════════════════════════════════════
+function buildSeparatedSheets(sectorKeys) {
+  const sheets = [];
+  const secNames = sectorKeys.map(k => SECTORS[k] ? SECTORS[k].name : k);
+
+  // ── شيت 1: الأسماك ──
+  const fishData = [];
+  fishData.push(['🐟 جرد وتفاصيل الأسماك', '', '', '', '', '', '', '']);
+  fishData.push(['اسم القطاع', 'نوع السمكة', 'الكمية المدرجة', 'وحدة القياس', 'سعر الشراء الفردي', 'إجمالي التكلفة المدفوعة', 'تاريخ الإنزال', 'ملاحظات']);
+  let gFishQty = 0, gFishCost = 0;
+  sectorKeys.forEach(secKey => {
+    const sec = SECTORS[secKey];
+    const fishArr = Object.values((state.sectors[secKey] || {}).fish || {});
+    let sQ = 0, sC = 0;
+    fishArr.forEach(f => {
+      const c = (f.value || 0) * (f.price || 0);
+      sQ += (f.value || 0); sC += c;
+      fishData.push([sec.name, f.type || '-', f.value || 0, f.unit === 'count' ? 'قطعة' : f.unit === 'kg' ? 'كجم' : 'طن', f.price ? f.price.toLocaleString('ar-EG') + ' ج.م' : '-', c > 0 ? c.toLocaleString('ar-EG') + ' ج.م' : '0.00 ج.م', fmtDate(f.date), f.notes || '']);
+    });
+    if (fishArr.length > 0) fishData.push(['📊 إجمالي ' + sec.name, '', sQ.toLocaleString('ar-EG'), '', '', sC > 0 ? sC.toLocaleString('ar-EG') + ' ج.م' : '0.00 ج.م', '', '']);
+    gFishQty += sQ; gFishCost += sC;
   });
-  Object.values((state.sectors[secKey]||{}).zaria||{}).forEach(z=>{
-    const d=z.date||'';if(!d)return;ensureDate(d);
-    byDate[d].fryQty+=(z.qty||0);byDate[d].fryCost+=(z.qty||0)*(z.price||0);
+  if (gFishQty > 0 || gFishCost > 0) fishData.push(['📊 الإجمالي العام', '', gFishQty.toLocaleString('ar-EG'), '', '', gFishCost > 0 ? gFishCost.toLocaleString('ar-EG') + ' ج.م' : '0.00 ج.م', '', '']);
+  else fishData.push(['لا توجد أسماك مسجلة', '', '', '', '', '', '', '']);
+  sheets.push({ name: 'الأسماك', data: fishData });
+
+  // ── شيت 2: الزريعة ──
+  const zariaData = [];
+  zariaData.push(['🐣 سجل الزريعة', '', '', '', '', '', '']);
+  zariaData.push(['اسم القطاع', 'نوع الزريعة', 'الكمية (قطعة)', 'سعر القطعة', 'إجمالي التكلفة', 'تاريخ الإنزال', 'ملاحظات']);
+  let gZQty = 0, gZCost = 0;
+  sectorKeys.forEach(secKey => {
+    const sec = SECTORS[secKey];
+    const zList = Object.values((state.sectors[secKey] || {}).zaria || {});
+    let sQ = 0, sC = 0;
+    zList.forEach(z => {
+      const zc = (z.qty || 0) * (z.price || 0);
+      sQ += (z.qty || 0); sC += zc;
+      zariaData.push([sec.name, z.fishType || 'بوري', (z.qty || 0).toLocaleString('ar-EG') + ' قطعة', z.price > 0 ? z.price.toLocaleString('ar-EG') + ' ج.م' : '-', zc > 0 ? zc.toLocaleString('ar-EG') + ' ج.م' : '-', fmtDate(z.date), z.notes || '']);
+    });
+    if (zList.length > 0) zariaData.push(['📊 إجمالي زريعة ' + sec.name, '', sQ.toLocaleString('ar-EG') + ' قطعة', '', sC > 0 ? sC.toLocaleString('ar-EG') + ' ج.م' : '0.00 ج.م', '', '']);
+    gZQty += sQ; gZCost += sC;
   });
-  Object.values((state.sectors[secKey]||{}).zariaFeed||{}).forEach(zf=>{
-    const d=zf.date||'';if(!d)return;ensureDate(d);
-    byDate[d].fryFeedKg+=(zf.weight||0);byDate[d].fryCost+=(zf.cost||0);
+  if (gZQty > 0 || gZCost > 0) zariaData.push(['📊 الإجمالي العام للزريعة', '', gZQty.toLocaleString('ar-EG') + ' قطعة', '', gZCost > 0 ? gZCost.toLocaleString('ar-EG') + ' ج.م' : '0.00 ج.م', '', '']);
+  else zariaData.push(['لا توجد سجلات زريعة', '', '', '', '', '', '']);
+  sheets.push({ name: 'الزريعة', data: zariaData });
+
+  // ── شيت 3: علف الزريعة ──
+  const zfData = [];
+  zfData.push(['🌿 سجل علف الزريعة', '', '', '', '', '', '']);
+  zfData.push(['اسم القطاع', 'نوع العلف (بروتين)', 'حالة الطفو', 'الكمية (كجم)', 'سعر الكيلو', 'إجمالي التكلفة', 'تاريخ التغذية', 'ملاحظات']);
+  let gZFKg = 0, gZFCost = 0;
+  sectorKeys.forEach(secKey => {
+    const sec = SECTORS[secKey];
+    const zfList = Object.values((state.sectors[secKey] || {}).zariaFeed || {});
+    let sK = 0, sC = 0;
+    zfList.forEach(zf => {
+      const up = (zf.weight > 0 && zf.cost > 0) ? (zf.cost / zf.weight).toFixed(2) : '-';
+      sK += (zf.weight || 0); sC += (zf.cost || 0);
+      zfData.push([sec.name, 'بروتين ' + (zf.feedType || '30') + '%', zf.float === 'float' ? 'عايم / طافي' : 'غاطس', (zf.weight || 0).toLocaleString('ar-EG') + ' كجم', up !== '-' ? up + ' ج.م' : '-', (zf.cost || 0) > 0 ? zf.cost.toLocaleString('ar-EG') + ' ج.م' : 'بدون سعر', fmtDate(zf.date), zf.notes || '']);
+    });
+    if (zfList.length > 0) zfData.push(['📊 إجمالي علف زريعة ' + sec.name, '', '', sK.toLocaleString('ar-EG') + ' كجم', '', sC > 0 ? sC.toLocaleString('ar-EG') + ' ج.م' : '0.00 ج.م', '', '']);
+    gZFKg += sK; gZFCost += sC;
   });
-  Object.values((state.sectors[secKey]||{}).zariaExpenses||{}).forEach(ze=>{
-    const d=ze.date||'';if(!d)return;ensureDate(d);byDate[d].fryCost+=(ze.amount||0);
+  if (gZFKg > 0 || gZFCost > 0) zfData.push(['📊 الإجمالي العام لعلف الزريعة', '', '', gZFKg.toLocaleString('ar-EG') + ' كجم', '', gZFCost > 0 ? gZFCost.toLocaleString('ar-EG') + ' ج.م' : '0.00 ج.م', '', '']);
+  else zfData.push(['لا توجد سجلات علف زريعة', '', '', '', '', '', '', '']);
+  sheets.push({ name: 'علف الزريعة', data: zfData });
+
+  // ── شيت 4: مصاريف الزريعة ──
+  const zeData = [];
+  zeData.push(['💸 مصاريف الزريعة', '', '', '', '']);
+  zeData.push(['اسم القطاع', 'بند المصروف', 'قيمة المصروف', 'تاريخ الصرف', 'ملاحظات']);
+  let gZECost = 0;
+  sectorKeys.forEach(secKey => {
+    const sec = SECTORS[secKey];
+    const zeList = Object.values((state.sectors[secKey] || {}).zariaExpenses || {});
+    let sC = 0;
+    zeList.forEach(ze => { sC += (ze.amount || 0); zeData.push([sec.name, ze.name || '-', (ze.amount || 0).toLocaleString('ar-EG') + ' ج.م', fmtDate(ze.date), '']); });
+    if (zeList.length > 0) zeData.push(['📊 إجمالي مصاريف زريعة ' + sec.name, '', sC > 0 ? sC.toLocaleString('ar-EG') + ' ج.م' : '0.00 ج.م', '', '']);
+    gZECost += sC;
   });
-  Object.values((state.sectors[secKey]||{}).extras||{}).forEach(e=>{
-    const d=e.date||'';if(!d)return;ensureDate(d);byDate[d].extraCost+=(e.amount||0);
+  if (gZECost > 0) zeData.push(['📊 الإجمالي العام لمصاريف الزريعة', '', gZECost.toLocaleString('ar-EG') + ' ج.م', '', '']);
+  else zeData.push(['لا توجد مصاريف زريعة', '', '', '', '']);
+  sheets.push({ name: 'مصاريف الزريعة', data: zeData });
+
+  // ── شيت 5: المصاريف التشغيلية ──
+  const exData = [];
+  exData.push(['💰 المصاريف التشغيلية الإضافية', '', '', '', '']);
+  exData.push(['اسم القطاع', 'بند المصروف النثري', 'قيمة المصروف المدفوع', 'تاريخ الصرف', 'ملاحظات']);
+  let gExCost = 0;
+  sectorKeys.forEach(secKey => {
+    const sec = SECTORS[secKey];
+    const exList = Object.values((state.sectors[secKey] || {}).extras || {});
+    let sC = 0;
+    exList.forEach(e => { sC += (e.amount || 0); exData.push([sec.name, e.name || '-', (e.amount || 0).toLocaleString('ar-EG') + ' ج.م', fmtDate(e.date), '']); });
+    if (exList.length > 0) exData.push(['📊 إجمالي مصاريف ' + sec.name, '', sC > 0 ? sC.toLocaleString('ar-EG') + ' ج.م' : '0.00 ج.م', '', '']);
+    gExCost += sC;
   });
-  const wsData=[];
-  wsData.push(['تقرير '+secName,'','','','','','']);
-  wsData.push(['','','','','','','']);
-  wsData.push(['التاريخ','مكسب / خسارة','مصاريف','علف زريعة القطاع','الزريعة','علف السمك','سمك القطاع']);
-  const dates=Object.keys(byDate).sort();
-  let totalNet=0,totalCost=0,totalFryFeed=0,totalFry=0,totalFishFeed=0,totalFish=0;
-  dates.forEach(d=>{
-    const r=byDate[d];
-    const dayCost=(r.feedCost||0)+(r.fryCost||0)+(r.extraCost||0)+(r.fishCostIn||0);
-    const net=(r.revenue||0)-dayCost;
-    const fishNet=(r.fishQtyIn||0)-(r.fishQtyOut||0);
-    totalNet+=net;totalCost+=dayCost;totalFryFeed+=(r.fryFeedKg||0);
-    totalFry+=(r.fryQty||0);totalFishFeed+=(r.fishFeedKg||0);totalFish+=fishNet;
-    wsData.push([
-      d,
-      (net>=0?'+':'')+net.toLocaleString('ar-EG')+' ج.م',
-      dayCost>0?dayCost.toLocaleString('ar-EG')+' ج.م':'-',
-      r.fryFeedKg>0?r.fryFeedKg.toLocaleString('ar-EG')+' كجم':'-',
-      r.fryQty>0?r.fryQty.toLocaleString('ar-EG')+' قطعة':'-',
-      r.fishFeedKg>0?r.fishFeedKg.toLocaleString('ar-EG')+' كجم':'-',
-      fishNet!==0?fishNet.toLocaleString('ar-EG'):'-'
-    ]);
+  if (gExCost > 0) exData.push(['📊 الإجمالي العام للمصاريف التشغيلية', '', gExCost.toLocaleString('ar-EG') + ' ج.م', '', '']);
+  else exData.push(['لا توجد مصاريف تشغيلية', '', '', '', '']);
+  sheets.push({ name: 'المصاريف التشغيلية', data: exData });
+
+  // ── شيت 6: تكاليف العلف المسحوب ──
+  const fcData = [];
+  fcData.push(['🍽️ تكاليف استهلاك العلف', '', '', '', '', '']);
+  fcData.push(['اسم القطاع', 'تاريخ السحب', 'نوع العلف', 'حالة الطفو', 'الكمية المسحوبة', 'تكلفة العلف']);
+  let gFKg = 0, gFCost = 0;
+  sectorKeys.forEach(secKey => {
+    const sec = SECTORS[secKey];
+    const fLogs = Object.values(state.logs || {}).filter(l => l && l.type === 'feed_out' && l.sector === secKey);
+    let sK = 0, sC = 0;
+    fLogs.forEach(l => {
+      sK += (l.qty || 0); sC += (l.feedCost || 0);
+      fcData.push([sec.name, l.date || '-', 'بروتين ' + (l.feedType || '-') + '%', l.float === 'float' ? 'عايم / طافي' : 'غاطس', (l.qtyLabel || mvFmtKg(l.qty)), (l.feedCost || 0) > 0 ? l.feedCost.toLocaleString('ar-EG') + ' ج.م' : '-']);
+    });
+    if (fLogs.length > 0) fcData.push(['📊 إجمالي علف ' + sec.name, '', '', '', sK > 0 ? mvFmtKg(sK) : '-', sC > 0 ? sC.toLocaleString('ar-EG') + ' ج.م' : '0.00 ج.م']);
+    gFKg += sK; gFCost += sC;
   });
-  wsData.push(['','','','','','','']);
-  wsData.push([
-    '📊 إجمالي',
-    (totalNet>=0?'+':'')+totalNet.toLocaleString('ar-EG')+' ج.م',
-    totalCost>0?totalCost.toLocaleString('ar-EG')+' ج.م':'-',
-    totalFryFeed>0?totalFryFeed.toLocaleString('ar-EG')+' كجم':'-',
-    totalFry>0?totalFry.toLocaleString('ar-EG')+' قطعة':'-',
-    totalFishFeed>0?totalFishFeed.toLocaleString('ar-EG')+' كجم':'-',
-    totalFish>0?('+'+totalFish.toLocaleString('ar-EG')):totalFish<0?(totalFish.toLocaleString('ar-EG')):'-'
-  ]);
-  return { wsData, secName };
+  if (gFKg > 0 || gFCost > 0) fcData.push(['📊 الإجمالي العام لاستهلاك العلف', '', '', '', gFKg > 0 ? mvFmtKg(gFKg) : '-', gFCost > 0 ? gFCost.toLocaleString('ar-EG') + ' ج.م' : '0.00 ج.م']);
+  else fcData.push(['لا توجد سجلات استهلاك علف', '', '', '', '', '']);
+  sheets.push({ name: 'تكاليف العلف', data: fcData });
+
+  // ── شيت 7: التصريف والمبيعات ──
+  const hvData = [];
+  hvData.push(['💰 سجل التصريف والمبيعات', '', '', '', '', '', '']);
+  hvData.push(['اسم القطاع', 'تاريخ التصريف', 'نوع السمكة', 'الكمية', 'سعر البيع', 'إجمالي الإيراد', 'ملاحظات']);
+  let gHvRev = 0;
+  sectorKeys.forEach(secKey => {
+    const sec = SECTORS[secKey];
+    const hvLogs = Object.values(state.logs || {}).filter(l => l && l.type === 'fish_out' && l.sector === secKey);
+    let sR = 0;
+    hvLogs.forEach(l => {
+      sR += (l.totalRevenue || 0);
+      hvData.push([sec.name, l.date || '-', l.fishType || '-', l.qtyLabel || mvFmtKg(l.qty), '', (l.totalRevenue || 0) > 0 ? l.totalRevenue.toLocaleString('ar-EG') + ' ج.م' : '-', l.notes || '']);
+    });
+    if (hvLogs.length > 0) hvData.push(['📊 إجمالي تصريف ' + sec.name, '', '', '', '', sR > 0 ? sR.toLocaleString('ar-EG') + ' ج.م' : '0.00 ج.م', '']);
+    gHvRev += sR;
+  });
+  if (gHvRev > 0) hvData.push(['📊 الإجمالي العام للتصريف', '', '', '', '', gHvRev.toLocaleString('ar-EG') + ' ج.م', '']);
+  else hvData.push(['لا توجد سجلات تصريف', '', '', '', '', '', '']);
+  sheets.push({ name: 'التصريف والمبيعات', data: hvData });
+
+  // ── شيت 8: الأداء المالي ──
+  const pnlData = [];
+  pnlData.push(['📈 تقرير الأداء المالي', '', '', '', '', '', '', '']);
+  pnlData.push(['اسم القطاع', 'تكلفة الأسماك', 'تكلفة استهلاك العلف', 'تكلفة الزريعة', 'المصروفات الإضافية', 'إجمالي التكاليف الكلية', 'إيرادات التصريف والبيع', 'صافي الربح/الخسارة']);
+  let sFC = 0, sFdC = 0, sZC = 0, sExC = 0, sTC = 0, sRv = 0, sNt = 0;
+  sectorKeys.forEach(k => {
+    const sec = SECTORS[k];
+    const p = sectorPnL(k);
+    const zc = sectorZariaCost(k) + sectorZariaFeedCost(k) + sectorZariaExpenseCost(k);
+    const totalC = p.fishCost + p.feedCost + zc + (p.extraCost || 0);
+    sFC += p.fishCost; sFdC += p.feedCost; sZC += zc; sExC += (p.extraCost || 0); sTC += totalC; sRv += p.revenue; sNt += (p.revenue - totalC);
+    pnlData.push([sec.name, p.fishCost.toLocaleString('ar-EG') + ' ج.م', p.feedCost.toLocaleString('ar-EG') + ' ج.م', zc > 0 ? zc.toLocaleString('ar-EG') + ' ج.م' : '0.00 ج.م', (p.extraCost || 0) > 0 ? (p.extraCost || 0).toLocaleString('ar-EG') + ' ج.م' : '0.00 ج.م', totalC.toLocaleString('ar-EG') + ' ج.م', p.revenue.toLocaleString('ar-EG') + ' ج.م', ((p.revenue - totalC) >= 0 ? '+' : '') + (p.revenue - totalC).toLocaleString('ar-EG') + ' ج.م']);
+  });
+  pnlData.push(['📊 إجمالي المزرعة', sFC.toLocaleString('ar-EG') + ' ج.م', sFdC.toLocaleString('ar-EG') + ' ج.م', sZC > 0 ? sZC.toLocaleString('ar-EG') + ' ج.م' : '0.00 ج.م', sExC.toLocaleString('ar-EG') + ' ج.م', sTC.toLocaleString('ar-EG') + ' ج.م', sRv.toLocaleString('ar-EG') + ' ج.م', (sNt >= 0 ? '+' : '') + sNt.toLocaleString('ar-EG') + ' ج.م']);
+  sheets.push({ name: 'الأداء المالي', data: pnlData });
+
+  return sheets;
 }
 
-// تصدير قطاع واحد (الزر الموجود بجوار كل قطاع)
+// تصدير قطاع واحد (الزر الموجود بجوار كل قطاع) — شيت منفصل لكل نوع بيانات
 function exportSectorData(secKey) {
   if (typeof XLSX === 'undefined') return toast('❌ يرجى الانتظار...', 'err');
-  const { wsData, secName } = buildSectorSheetData(secKey);
-  const ws = XLSX.utils.aoa_to_sheet(wsData);
-  ws['!views'] = [{ rightToLeft: true, state: 'frozen', ySplit: 3, xSplit: 0, topLeftCell: 'A4', activeCell: 'A4' }];
-  applyExcelFormatting(ws);
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, secName.substring(0,25));
-  exportToFile(wb, 'تقرير_'+secName+'_'+new Date().toISOString().split('T')[0]+'.xlsx');
+  const sheets = buildSeparatedSheets([secKey]);
+  sheets.forEach(s => {
+    const ws = XLSX.utils.aoa_to_sheet(s.data);
+    applyExcelFormatting(ws);
+    XLSX.utils.book_append_sheet(wb, ws, s.name.substring(0, 31));
+  });
+  const secName = SECTORS[secKey] ? SECTORS[secKey].name : secKey;
+  exportToFile(wb, 'تقرير_' + secName + '_' + new Date().toISOString().split('T')[0] + '.xlsx');
 }
 
-// تصدير جميع القطاعات السبعة في ملف واحد (كل قطاع شيت منفصل)
+// تصدير جميع القطاعات السبعة في ملف واحد — كل نوع بيانات في شيت منفصل
 function exportAllSectors() {
   if (typeof XLSX === 'undefined') return toast('❌ يرجى الانتظار...', 'err');
   const wb = XLSX.utils.book_new();
-  Object.keys(SECTORS).forEach(secKey => {
-    const { wsData, secName } = buildSectorSheetData(secKey);
-    const ws = XLSX.utils.aoa_to_sheet(wsData);
-    ws['!views'] = [{ rightToLeft: true, state: 'frozen', ySplit: 3, xSplit: 0, topLeftCell: 'A4', activeCell: 'A4' }];
+  const sheets = buildSeparatedSheets(Object.keys(SECTORS));
+  sheets.forEach(s => {
+    const ws = XLSX.utils.aoa_to_sheet(s.data);
     applyExcelFormatting(ws);
-    XLSX.utils.book_append_sheet(wb, ws, secName.substring(0,25));
+    XLSX.utils.book_append_sheet(wb, ws, s.name.substring(0, 31));
   });
-  exportToFile(wb, 'تقرير_جميع_القطاعات_'+new Date().toISOString().split('T')[0]+'.xlsx');
+  exportToFile(wb, 'تقرير_القطاعات_المنفصل_' + new Date().toISOString().split('T')[0] + '.xlsx');
 }
 
 // ══════════════════════════════════════════
@@ -3141,8 +3452,10 @@ window.toggleZariaFeedPage  = toggleZariaFeedPage;
 window.renderZariaFeedForm  = renderZariaFeedForm;
 window.renderZariaPage = renderZariaPage;
 window.openHarvest     = typeof openHarvest     !== 'undefined' ? openHarvest     : window.openHarvest;
-window.exportAllSectors = exportAllSectors;
-  window.exportSectorData= typeof exportSectorData!== 'undefined' ? exportSectorData: window.exportSectorData;
+window.exportAllData     = exportAllData;
+window.exportAllSectors  = exportAllSectors;
+window.exportSectorData  = typeof exportSectorData !== 'undefined' ? exportSectorData : window.exportSectorData;
+window.buildSeparatedSheets = buildSeparatedSheets;
 window.resetSectorData     = resetSectorData;
 window.resetAllProgramData = resetAllProgramData;
 </script>
