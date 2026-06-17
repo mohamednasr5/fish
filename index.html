@@ -2,11 +2,20 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5.0">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="مزرعة السمك">
+<meta name="application-name" content="مزرعة السمك">
+<meta name="format-detection" content="telephone=no">
 <meta name="theme-color" content="#0a1628">
+<meta name="apple-touch-icon" content="icon-192.png">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="512x512" href="icon-512.png">
 <title>إدارة مزرعة الاستزراع السمكي</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
@@ -469,9 +478,236 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
 .zaria-card{background:rgba(0,229,255,.05);border:1px solid rgba(0,229,255,.18);border-radius:11px;padding:11px;margin-top:9px;}
 .zaria-item{background:rgba(0,0,0,.2);border-radius:9px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
 .btn-zaria{background:linear-gradient(135deg,#0e7490,var(--cyan)) !important;color:var(--deep) !important;}
+
+/* ═══════════════════════════════════════════════════════════════
+   PWA PROFESSIONAL UPGRADE — Fish Farm
+   • Splash screen
+   • Floating install bar
+   • Bottom navigation (replaces top nav on phone)
+   • Tablet responsive (Rail on landscape, Bottom on portrait)
+   • Master-Detail layout
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ===================== SPLASH SCREEN ===================== */
+#pwa-splash {
+  position: fixed; inset: 0; z-index: 99999;
+  background: radial-gradient(ellipse 100% 100% at 50% 0%, #0d2a45 0%, #04111f 60%);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  transition: opacity 0.6s ease, visibility 0.6s ease;
+}
+#pwa-splash.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+.splash-logo {
+  width: 110px; height: 110px; border-radius: 28px;
+  background: linear-gradient(135deg, #00b4d8 0%, #00e5ff 100%);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 56px; box-shadow: 0 16px 60px rgba(0,229,255,0.45);
+  animation: splashPulse 2s ease-in-out infinite;
+  margin-bottom: 24px;
+}
+@keyframes splashPulse {
+  0%,100% { transform: scale(1); box-shadow: 0 16px 60px rgba(0,229,255,0.45); }
+  50%     { transform: scale(1.05); box-shadow: 0 16px 80px rgba(0,229,255,0.7); }
+}
+.splash-title { font-size: 22px; font-weight: 900; color: var(--cyan); text-shadow: 0 2px 12px rgba(0,229,255,0.3); margin-bottom: 6px; text-align: center; }
+.splash-sub { font-size: 13px; color: var(--muted); font-weight: 500; margin-bottom: 36px; }
+.splash-loader {
+  width: 44px; height: 44px;
+  border: 3px solid rgba(0,229,255,0.2);
+  border-top-color: var(--cyan);
+  border-radius: 50%;
+  animation: splashSpin 0.9s linear infinite;
+}
+@keyframes splashSpin { to { transform: rotate(360deg); } }
+.splash-bubble {
+  position: absolute; border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, rgba(0,229,255,0.12), transparent 70%);
+  pointer-events: none;
+}
+.splash-bubble.b1 { width: 280px; height: 280px; top: -80px; right: -80px; animation: splashFloat 8s ease-in-out infinite; }
+.splash-bubble.b2 { width: 180px; height: 180px; bottom: -40px; left: -40px; animation: splashFloat 6s ease-in-out infinite reverse; }
+@keyframes splashFloat { 0%,100%{transform:translate(0,0)} 50%{transform:translate(20px,-20px)} }
+
+/* ===================== PROFESSIONAL INSTALL BAR ===================== */
+#pwa-install-bar {
+  position: fixed; bottom: calc(72px + env(safe-area-inset-bottom) + 12px);
+  left: 50%; transform: translateX(-50%) translateY(140%);
+  width: calc(100% - 24px); max-width: 560px;
+  background: linear-gradient(135deg, rgba(7,30,53,0.97) 0%, rgba(4,17,31,0.97) 100%);
+  border: 1px solid rgba(0,229,255,0.4);
+  border-radius: 20px; padding: 14px 16px;
+  box-shadow: 0 16px 50px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,229,255,0.05), inset 0 1px 0 rgba(255,255,255,0.05);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  display: flex; align-items: center; gap: 12px;
+  z-index: 10001;
+  transition: transform 0.5s cubic-bezier(0.34,1.56,0.64,1), opacity 0.4s ease;
+  opacity: 0;
+}
+#pwa-install-bar.visible { transform: translateX(-50%) translateY(0); opacity: 1; }
+#pwa-install-bar.dismissed { transform: translateX(-50%) translateY(140%); opacity: 0; }
+.install-bar-icon {
+  width: 44px; height: 44px; flex-shrink: 0;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #00b4d8 0%, #00e5ff 100%);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px; box-shadow: 0 4px 16px rgba(0,229,255,0.4);
+}
+.install-bar-content { flex: 1; min-width: 0; }
+.install-bar-title { font-size: 14px; font-weight: 800; color: var(--text); margin-bottom: 2px; }
+.install-bar-sub { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.install-bar-cta {
+  background: linear-gradient(135deg, #00b4d8 0%, #00e5ff 100%);
+  color: var(--deep); font-weight: 800; font-size: 13px;
+  padding: 10px 18px; border-radius: 12px; border: none;
+  cursor: pointer; font-family: 'Cairo', sans-serif;
+  white-space: nowrap; flex-shrink: 0;
+  box-shadow: 0 4px 16px rgba(0,229,255,0.4);
+  transition: transform 0.2s;
+}
+.install-bar-cta:active { transform: scale(0.96); }
+.install-bar-close {
+  position: absolute; top: -8px; left: -8px;
+  width: 24px; height: 24px; border-radius: 50%;
+  background: rgba(4,17,31,0.95); color: var(--muted);
+  border: 1px solid rgba(255,255,255,0.15);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; cursor: pointer; line-height: 1;
+}
+.install-bar-close:active { transform: scale(0.9); }
+#pwa-install-bar.visible::after {
+  content: ''; position: absolute; inset: -2px;
+  border-radius: 22px; border: 2px solid rgba(0,229,255,0.5);
+  animation: installPulse 2s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes installPulse {
+  0%,100% { opacity: 0; transform: scale(1); }
+  50%     { opacity: 0.8; transform: scale(1.02); }
+}
+
+/* ===================== BOTTOM NAV (replaces top nav on phone) ===================== */
+.bottom-nav {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+  background: linear-gradient(180deg, rgba(7,30,53,0.97) 0%, rgba(4,17,31,1) 100%);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(0,229,255,0.15);
+  display: flex;
+  padding: 8px 0 max(8px, env(safe-area-inset-bottom));
+  box-shadow: 0 -4px 24px rgba(0,0,0,0.4);
+}
+.bottom-nav .nav-item {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  cursor: pointer; padding: 6px 4px; transition: all 0.3s; border: none; background: none;
+  color: var(--muted); font-family: 'Cairo', sans-serif;
+}
+.bottom-nav .nav-item.active { color: var(--cyan); }
+.bottom-nav .nav-item .nav-icon { font-size: 22px; transition: transform 0.3s; }
+.bottom-nav .nav-item.active .nav-icon { transform: translateY(-4px) scale(1.15); filter: drop-shadow(0 0 8px var(--cyan)); }
+.bottom-nav .nav-item .nav-label { font-size: 10px; font-weight: 600; white-space: nowrap; }
+
+/* Hide the old top nav on phones — replaced by bottom nav */
+@media (max-width: 899px) {
+  .nav { display: none !important; }
+  .main { padding-bottom: calc(78px + env(safe-area-inset-bottom)) !important; }
+}
+
+/* Portrait tablet — bottom nav centered */
+@media (min-width: 600px) and (max-width: 899px) {
+  .bottom-nav { max-width: 600px; left: 50%; transform: translateX(-50%); border-radius: 20px 20px 0 0; margin: 0 auto; }
+  .bottom-nav .nav-item .nav-label { font-size: 11px; }
+  .bottom-nav .nav-item .nav-icon { font-size: 24px; }
+  .main { padding-bottom: calc(80px + env(safe-area-inset-bottom)) !important; }
+  .sum-row { grid-template-columns: repeat(4, 1fr) !important; }
+  .sum-chip { padding: 14px !important; }
+  .sum-chip .v { font-size: 22px !important; }
+  .sum-chip .l { font-size: 11px !important; }
+}
+
+/* Landscape tablet — Rail on right side (auto-switch) */
+@media (min-width: 900px) and (orientation: landscape) {
+  .nav { display: none !important; }
+  .bottom-nav {
+    position: fixed; top: 0; bottom: 0; right: 0; left: auto;
+    width: 96px; flex-direction: column;
+    padding: max(16px, env(safe-area-inset-top)) 0 max(16px, env(safe-area-inset-bottom));
+    border-top: none; border-left: 1px solid rgba(0,229,255,0.15);
+    background: linear-gradient(180deg, rgba(7,30,53,0.97) 0%, rgba(4,17,31,0.97) 100%);
+    overflow-y: auto;
+    box-shadow: -4px 0 24px rgba(0,0,0,0.4);
+  }
+  .bottom-nav::-webkit-scrollbar { width: 0; }
+  .bottom-nav .nav-item { padding: 12px 4px; }
+  .bottom-nav .nav-item .nav-icon { font-size: 24px; }
+  .bottom-nav .nav-item .nav-label { font-size: 10px; }
+
+  /* Push app content to the right of the rail */
+  #app { padding-right: 96px; }
+  .hdr { padding-right: calc(16px + 96px) !important; }
+  .main { padding-right: calc(20px + 96px) !important; padding-left: 24px !important; padding-bottom: 24px !important; }
+  #pwa-install-bar { right: calc(96px + 12px); left: 12px; max-width: none; transform: translateY(140%); width: auto; }
+  #pwa-install-bar.visible { transform: translateY(0); }
+  #pwa-install-bar.dismissed { transform: translateY(140%); }
+
+  /* Tablet-friendly grids */
+  .sum-row { grid-template-columns: repeat(4, 1fr) !important; gap: 12px !important; }
+  .sum-chip { padding: 18px !important; }
+  .sum-chip .v { font-size: 26px !important; }
+  .sum-chip .l { font-size: 12px !important; }
+
+  /* Master-Detail: split dashboard sections side by side */
+  #pg-dashboard > .pg-ttl { font-size: 22px !important; }
+  #pg-dashboard > div[id^="d-"] { padding: 16px !important; }
+}
+
+/* Very wide (large landscape tablet / desktop) — center content card */
+@media (min-width: 1280px) {
+  #app { max-width: 1400px; margin: 0 auto; padding-right: 96px; }
+  .hdr { padding-right: calc(24px + 96px) !important; padding-left: 24px !important; }
+  .main { max-width: 1200px !important; margin: 0 auto !important; }
+}
+
+/* Standalone PWA tweaks (only when installed) */
+@media all and (display-mode: standalone) {
+  .hdr { padding-top: max(14px, env(safe-area-inset-top)) !important; }
+  #pwa-install-bar { display: none !important; }
+}
 </style>
 </head>
 <body>
+
+<!-- ============ PWA SPLASH SCREEN ============ -->
+<div id="pwa-splash">
+  <div class="splash-bubble b1"></div>
+  <div class="splash-bubble b2"></div>
+  <div class="splash-logo">🐟</div>
+  <div class="splash-title">مزرعة الاستزراع السمكي</div>
+  <div class="splash-sub">جاري التحميل...</div>
+  <div class="splash-loader"></div>
+</div>
+<script>
+/* Splash hide — kept inline & isolated so other script errors can't block it */
+(function() {
+  var splash = document.getElementById('pwa-splash');
+  if (!splash) return;
+  function hideSplash() {
+    try { splash.classList.add('hidden'); } catch(e) {}
+    setTimeout(function(){ try { if (splash.parentNode) splash.parentNode.removeChild(splash); } catch(e){} }, 1400);
+  }
+  if (document.readyState === 'complete') setTimeout(hideSplash, 500);
+  else window.addEventListener('load', function(){ setTimeout(hideSplash, 500); });
+  setTimeout(hideSplash, 4000); // safety net
+})();
+</script>
+
+<!-- ============ PROFESSIONAL INSTALL BAR ============ -->
+<div id="pwa-install-bar" role="dialog" aria-label="تثبيت التطبيق">
+  <button class="install-bar-close" id="install-close" aria-label="إغلاق">✕</button>
+  <div class="install-bar-icon">📲</div>
+  <div class="install-bar-content">
+    <div class="install-bar-title">ثبّت التطبيق الآن</div>
+    <div class="install-bar-sub">وصول سريع • يعمل بدون إنترنت • تجربة احترافية</div>
+  </div>
+  <button class="install-bar-cta" id="install-cta">تثبيت</button>
+</div>
 
 <div id="login-screen">
   <div class="login-bg-art"></div>
@@ -744,6 +980,31 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
       <div id="movementsEl"><div class="loading"><div class="spin"></div> تحميل...</div></div>
     </div>
   </main>
+
+  <!-- ============ BOTTOM NAVIGATION (auto-switches to Rail on tablet landscape) ============ -->
+  <nav class="bottom-nav" id="bottom-nav">
+    <button class="nav-item active" data-page="dashboard" onclick="showPage('dashboard')">
+      <span class="nav-icon">🏠</span><span class="nav-label">الرئيسية</span>
+    </button>
+    <button class="nav-item" data-page="sectors" onclick="showPage('sectors')">
+      <span class="nav-icon">🌊</span><span class="nav-label">القطاعات</span>
+    </button>
+    <button class="nav-item" data-page="store" onclick="showPage('store')">
+      <span class="nav-icon">🏭</span><span class="nav-label">المخزن</span>
+    </button>
+    <button class="nav-item" data-page="feed" onclick="showPage('feed')">
+      <span class="nav-icon">🍽️</span><span class="nav-label">التغذية</span>
+    </button>
+    <button class="nav-item" data-page="zaria" onclick="showPage('zaria')">
+      <span class="nav-icon">🐟</span><span class="nav-label">الزريعة</span>
+    </button>
+    <button class="nav-item" data-page="logs" onclick="showPage('logs')">
+      <span class="nav-icon">📋</span><span class="nav-label">السجل</span>
+    </button>
+    <button class="nav-item" data-page="movements" onclick="showPage('movements')">
+      <span class="nav-icon">🔄</span><span class="nav-label">الحركات</span>
+    </button>
+  </nav>
 </div>
 
 <div class="mo" id="mo-fish" onclick="cModal('mo-fish',event)">
@@ -1562,6 +1823,7 @@ function showPage(p){
   if(p==='zaria') renderZariaPage();
   document.querySelectorAll('.pg').forEach(x=>x.classList.remove('active'));
   document.querySelectorAll('.nb').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.bottom-nav .nav-item').forEach(x=>x.classList.remove('active'));
   if(p==='feed' && currentUser?.role==='viewer'){
     document.getElementById('pg-feed-readonly').classList.add('active'); renderFeedReadonly();
   } else {
@@ -1570,6 +1832,9 @@ function showPage(p){
   if(p==='movements'){initMovementsFilters();renderMovements();}
   const idx=['dashboard','sectors','store','feed','zaria','logs','movements'].indexOf(p);
   if(idx>=0) document.querySelectorAll('.nb')[idx].classList.add('active');
+  // Sync new bottom-nav active state
+  const bnItem = document.querySelector('.bottom-nav .nav-item[data-page="'+p+'"]');
+  if(bnItem) bnItem.classList.add('active');
   window.scrollTo(0,0);
 }
 
@@ -2511,14 +2776,103 @@ function toast(msg,type=''){
   clearTimeout(tTimer); tTimer=setTimeout(()=>el.classList.remove('show'),3600);
 }
 
+// Pre-login PWA install bar setup — fires immediately so the install bar can show on the login screen too
+(function preLoginPWA(){
+  if (window.__pwaPreLoginInit) return;
+  window.__pwaPreLoginInit = true;
+  const installBar = document.getElementById('pwa-install-bar');
+  const installCta = document.getElementById('install-cta');
+  const installClose = document.getElementById('install-close');
+  if (!installBar) return;
+  const isSA = window.matchMedia('(display-mode:standalone)').matches || window.navigator.standalone;
+  if (isSA) installBar.style.display = 'none';
+  let dismissed = sessionStorage.getItem('pwa-install-dismissed') === '1';
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    window.__deferredPrompt = e;
+    deferredPrompt = e;
+    const oldBtn = document.getElementById('installBtn'); if (oldBtn) oldBtn.classList.remove('hidden');
+    if (dismissed || isSA) return;
+    setTimeout(() => installBar.classList.add('visible'), 1200);
+  });
+  window.addEventListener('appinstalled', () => {
+    if (installBar) { installBar.classList.remove('visible'); installBar.classList.add('dismissed'); }
+    toast && toast('🎉 تم تثبيت التطبيق بنجاح!', 'ok');
+  });
+  if (installCta) installCta.addEventListener('click', async () => {
+    const p = window.__deferredPrompt || deferredPrompt;
+    if (!p) {
+      if (typeof toast === 'function') toast('ℹ️ من قائمة المتصفح (⋮) اختر: «إضافة إلى الشاشة الرئيسية»');
+      return;
+    }
+    p.prompt();
+    const c = await p.userChoice;
+    if (c.outcome === 'accepted') {
+      installBar.classList.remove('visible'); installBar.classList.add('dismissed');
+      if (typeof toast === 'function') toast('✅ جاري تثبيت التطبيق...', 'ok');
+    }
+    window.__deferredPrompt = null; deferredPrompt = null;
+  });
+  if (installClose) installClose.addEventListener('click', () => {
+    installBar.classList.remove('visible'); installBar.classList.add('dismissed');
+    dismissed = true; sessionStorage.setItem('pwa-install-dismissed', '1');
+  });
+})();
+
 function setupPWA(){
   const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
   const isSA=window.matchMedia('(display-mode:standalone)').matches||window.navigator.standalone;
-  if(isIOS&&!isSA) setTimeout(()=>document.getElementById('ios-banner')?.style && (document.getElementById('ios-banner').style.display='block'),2000);
-  window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); deferredPrompt=e; document.getElementById('installBtn').classList.remove('hidden'); });
-  window.addEventListener('appinstalled',()=>{ document.getElementById('installBtn').classList.add('hidden'); toast('🎉 تم التثبيت!','ok'); });
+  const installBar=document.getElementById('pwa-install-bar');
+  const installCta=document.getElementById('install-cta');
+  const installClose=document.getElementById('install-close');
+  let installDismissed=sessionStorage.getItem('pwa-install-dismissed')==='1';
+
+  // Hide install bar if already in standalone (installed) mode
+  if(isSA && installBar){ installBar.style.display='none'; }
+
+  window.addEventListener('beforeinstallprompt',e=>{
+    e.preventDefault(); deferredPrompt=e;
+    // Update old button (if any) for backward compatibility
+    const oldBtn=document.getElementById('installBtn'); if(oldBtn) oldBtn.classList.remove('hidden');
+    // Show professional install bar
+    if(installDismissed || isSA) return;
+    setTimeout(()=>installBar && installBar.classList.add('visible'),1200);
+  });
+
+  window.addEventListener('appinstalled',()=>{
+    const oldBtn=document.getElementById('installBtn'); if(oldBtn) oldBtn.classList.add('hidden');
+    if(installBar){ installBar.classList.remove('visible'); installBar.classList.add('dismissed'); }
+    toast('🎉 تم تثبيت التطبيق بنجاح!','ok');
+  });
+
+  // Professional install bar handlers
+  if(installCta) installCta.addEventListener('click', async ()=>{
+    if(!deferredPrompt){
+      // Fallback message (iOS Safari / unsupported browsers)
+      toast('ℹ️ من قائمة المتصفح (⋮) اختر: «إضافة إلى الشاشة الرئيسية»');
+      return;
+    }
+    deferredPrompt.prompt();
+    const choice=await deferredPrompt.userChoice;
+    if(choice.outcome==='accepted'){
+      installBar.classList.remove('visible'); installBar.classList.add('dismissed');
+      toast('✅ جاري تثبيت التطبيق...','ok');
+    }
+    deferredPrompt=null;
+  });
+
+  if(installClose) installClose.addEventListener('click', ()=>{
+    installBar.classList.remove('visible'); installBar.classList.add('dismissed');
+    installDismissed=true; sessionStorage.setItem('pwa-install-dismissed','1');
+  });
 }
-function installApp(){ if(!deferredPrompt) return; deferredPrompt.prompt(); deferredPrompt.userChoice.then(()=>{ deferredPrompt=null; }); }
+function installApp(){
+  // Backward-compatible wrapper that triggers the new professional bar's CTA
+  const cta=document.getElementById('install-cta');
+  if(cta){ cta.click(); return; }
+  if(!deferredPrompt) return;
+  deferredPrompt.prompt(); deferredPrompt.userChoice.then(()=>{ deferredPrompt=null; });
+}
 if('serviceWorker'in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 
 // ══════════════════════════════════════════════════════════════════
@@ -3438,7 +3792,7 @@ window.pinDel          = typeof pinDel          !== 'undefined' ? pinDel        
 window.showManualLogin = typeof showManualLogin !== 'undefined' ? showManualLogin : window.showManualLogin;
 window.toggleZariaForm = toggleZariaForm;
 window.saveZaria       = saveZaria;
-window.toggleZariaPage = toggleZariaPage;
+window.toggleZariaPage = typeof toggleZariaPage !== 'undefined' ? toggleZariaPage : function(){ /* stub — function removed in original code */ };
 window.addExtraExpense = addExtraExpense;
 window.delExtraExpense = delExtraExpense;
 window.addZaria        = addZaria;
@@ -3458,6 +3812,10 @@ window.exportSectorData  = typeof exportSectorData !== 'undefined' ? exportSecto
 window.buildSeparatedSheets = buildSeparatedSheets;
 window.resetSectorData     = resetSectorData;
 window.resetAllProgramData = resetAllProgramData;
+
+// ══════════════════════════════════════════════════════════════════
+// PWA SPLASH SCREEN — hide on load (isolated script at top handles this)
+// ══════════════════════════════════════════════════════════════════
 </script>
 </body>
 </html>
