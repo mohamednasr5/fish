@@ -1,45 +1,61 @@
-const CACHE_NAME = 'fish-farm-v1.2';
-const ASSETS = [
+/* ===========================================================
+   Service Worker — مزرعة الاستزراع السمكي
+   - Caches app shell + runtime caching
+   - Network-first for Firebase / live data
+   - Auto-update via SKIP_WAITING message
+   =========================================================== */
+const CACHE_VERSION = 'fish-farm-v2.0';
+const APP_SHELL = [
   './',
   './index.html',
   './manifest.json',
-  'https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&family=Tajawal:wght@300;400;500;700;800&display=swap'
+  './icon-192.png',
+  './icon-512.png',
+  'https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap'
 ];
 
-self.addEventListener('install', e => {
+self.addEventListener('install', (e) => {
   e.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(ASSETS).catch(() => {});
-    })
+    caches.open(CACHE_VERSION).then(cache =>
+      cache.addAll(APP_SHELL).catch(() => {})
+    )
   );
   self.skipWaiting();
 });
 
-self.addEventListener('activate', e => {
+self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    )
+      Promise.all(keys.filter(k => k !== CACHE_VERSION).map(k => caches.delete(k)))
+    ).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
-self.addEventListener('fetch', e => {
-  // Skip Firebase requests - always fetch live
-  if (e.request.url.includes('firebase') || e.request.url.includes('googleapis.com/identitytoolkit')) {
+self.addEventListener('fetch', (e) => {
+  const url = e.request.url;
+  if (e.request.method !== 'GET') return;
+
+  // Skip Firebase — always go live
+  if (url.includes('firebase') || url.includes('googleapis.com/identitytoolkit') || url.includes('gstatic.com')) {
     return;
   }
-  
+
   e.respondWith(
     caches.match(e.request).then(cached => {
-      const fetchPromise = fetch(e.request).then(response => {
-        if (response && response.status === 200) {
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(e.request, responseClone));
+      if (cached) return cached;
+      return fetch(e.request).then(response => {
+        if (response && response.ok && response.type === 'basic') {
+          const clone = response.clone();
+          caches.open(CACHE_VERSION).then(cache => cache.put(e.request, clone));
         }
         return response;
-      }).catch(() => cached);
-      return cached || fetchPromise;
+      });
+    }).catch(() => {
+      if (e.request.destination === 'document') return caches.match('./index.html');
     })
   );
+});
+
+self.addEventListener('message', (e) => {
+  if (e.data === 'SKIP_WAITING') self.skipWaiting();
 });
