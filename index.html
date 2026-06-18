@@ -3817,5 +3817,185 @@ window.resetAllProgramData = resetAllProgramData;
 // PWA SPLASH SCREEN — hide on load (isolated script at top handles this)
 // ══════════════════════════════════════════════════════════════════
 </script>
+
+<!-- PWA Install Prompt & Update Manager -->
+<script>
+  'use strict';
+
+  // متغيرات عامة
+  let deferredPrompt = null;
+  let installButtonEl = null;
+  let updateAvailableEl = null;
+  let updateBtnEl = null;
+  let isAppInstalled = false;
+
+  // ═══════════════════════════════════════════════════════════════
+  // 1. فحص ما إذا كان التطبيق مثبتاً بالفعل
+  // ═══════════════════════════════════════════════════════════════
+  if (navigator.standalone === true) {
+    isAppInstalled = true;
+    document.documentElement.setAttribute('data-app-installed', 'true');
+  }
+
+  window.addEventListener('appinstalled', () => {
+    isAppInstalled = true;
+    deferredPrompt = null;
+    console.log('✅ تم تثبيت التطبيق بنجاح!');
+    document.documentElement.setAttribute('data-app-installed', 'true');
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  // 2. استمع لحدث beforeinstallprompt (للأندرويد وبعض الأجهزة)
+  // ═══════════════════════════════════════════════════════════════
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    
+    // أظهر زر التثبيت إذا كان موجوداً
+    installButtonEl = document.getElementById('pwa-install-btn');
+    if (installButtonEl) {
+      installButtonEl.style.display = 'flex';
+      installButtonEl.addEventListener('click', handleInstallClick);
+    }
+    
+    console.log('✅ PWA متاح للتثبيت');
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  // 3. معالج نقرة زر التثبيت
+  // ═══════════════════════════════════════════════════════════════
+  function handleInstallClick() {
+    if (!deferredPrompt) return;
+    
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then((choiceResult) => {
+      if (choiceResult.outcome === 'accepted') {
+        console.log('✅ تم قبول التثبيت من قبل المستخدم');
+      } else {
+        console.log('❌ تم رفض التثبيت');
+      }
+      deferredPrompt = null;
+      if (installButtonEl) {
+        installButtonEl.style.display = 'none';
+      }
+    }).catch((err) => {
+      console.error('خطأ في التثبيت:', err);
+    });
+  }
+
+  window.handleInstallClick = handleInstallClick;
+
+  // ═══════════════════════════════════════════════════════════════
+  // 7. معالجات أزرار شريط التثبيت الموجود
+  // ═══════════════════════════════════════════════════════════════
+  window.addEventListener('DOMContentLoaded', () => {
+    const installBar = document.getElementById('pwa-install-bar');
+    const installCta = document.getElementById('install-cta');
+    const installClose = document.getElementById('install-close');
+
+    if (installCta && deferredPrompt) {
+      installBar?.classList.add('visible');
+      
+      installCta.addEventListener('click', () => {
+        handleInstallClick();
+        installBar?.classList.remove('visible');
+        installBar?.classList.add('dismissed');
+      });
+    }
+
+    if (installClose) {
+      installClose.addEventListener('click', () => {
+        installBar?.classList.remove('visible');
+        installBar?.classList.add('dismissed');
+      });
+    }
+
+    // إعادة إظهار شريط التثبيت عند عدم التثبيت
+    window.addEventListener('beforeinstallprompt', () => {
+      if (installBar) {
+        installBar.classList.remove('dismissed');
+        installBar.classList.add('visible');
+      }
+    });
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  // 4. مدير التحديثات — تحديثات السيرفيس وركر
+  // ═══════════════════════════════════════════════════════════════
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', async () => {
+      try {
+        const registration = await navigator.serviceWorker.register('./sw.js', {
+          scope: './',
+          updateViaCache: 'none'
+        });
+        
+        console.log('✅ Service Worker مسجل بنجاح');
+
+        // استمع للتحديثات المتاحة
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+          
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'activated' && navigator.serviceWorker.controller) {
+              // يوجد تحديث متاح
+              console.log('🔄 تحديث متاح للتطبيق');
+              showUpdateNotification();
+            }
+          });
+        });
+
+        // تحقق من التحديثات كل 60 ثانية
+        setInterval(() => {
+          registration.update().catch((err) => {
+            console.warn('فشل فحص التحديثات:', err);
+          });
+        }, 60000);
+
+      } catch (error) {
+        console.warn('❌ فشل في تسجيل Service Worker:', error);
+      }
+    });
+
+    // استقبل رسائل من Service Worker
+    navigator.serviceWorker.addEventListener('message', (event) => {
+      if (event.data && event.data.type === 'UPDATE_AVAILABLE') {
+        showUpdateNotification();
+      }
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // 5. عرض إشعار التحديث
+  // ═══════════════════════════════════════════════════════════════
+  function showUpdateNotification() {
+    updateAvailableEl = document.getElementById('pwa-update-notification');
+    
+    if (!updateAvailableEl) {
+      // إنشاء الإشعار ديناميكياً إذا لم يكن موجوداً
+      updateAvailableEl = document.createElement('div');
+      updateAvailableEl.id = 'pwa-update-notification';
+      updateAvailableEl.innerHTML = `
+        <div style="background:#00b4d8;color:white;padding:16px;border-radius:8px;margin:12px;display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 4px 12px rgba(0,180,216,0.3);">
+          <span style="flex:1;">🔄 توجد نسخة جديدة من التطبيق</span>
+          <button onclick="location.reload()" style="padding:8px 16px;background:white;color:#00b4d8;border:none;border-radius:4px;cursor:pointer;font-weight:bold;">تحديث الآن</button>
+        </div>
+      `;
+      document.body.insertBefore(updateAvailableEl, document.body.firstChild);
+    } else {
+      updateAvailableEl.style.display = 'block';
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // 6. معلومات التشخيص في Console
+  // ═══════════════════════════════════════════════════════════════
+  console.log('%c🐟 Fish Farm PWA Diagnostics', 'color:#00b4d8;font-size:16px;font-weight:bold');
+  console.log('HTTPS:', window.location.protocol === 'https:' ? '✅' : '⚠️ HTTP');
+  console.log('Service Worker:', 'serviceWorker' in navigator ? '✅' : '❌');
+  console.log('Standalone Mode:', navigator.standalone === true ? '✅ مثبت' : '❌ لم يثبت');
+  console.log('Manifest:', document.querySelector('link[rel="manifest"]') ? '✅' : '❌');
+  console.log('Browser:', navigator.userAgent.includes('Chrome') ? 'Chrome' : navigator.userAgent.includes('Safari') ? 'Safari' : 'Unknown');
+</script>
 </body>
 </html>
