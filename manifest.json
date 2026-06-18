@@ -5,18 +5,38 @@
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "display_override": ["standalone", "minimal-ui"],
+  "display_override": ["standalone", "minimal-ui", "browser"],
   "background_color": "#04111f",
   "theme_color": "#0a1628",
-  "orientation": "any",
+  "orientation": "portrait-primary",
   "lang": "ar",
   "dir": "rtl",
   "categories": ["productivity", "business", "agriculture"],
   "icons": [
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ],
   "screenshots": [
     {
@@ -27,18 +47,66 @@
       "label": "لوحة التحكم على التابلت"
     },
     {
-      "src": "icon-512.png",
-      "sizes": "512x512",
+      "src": "icon-192.png",
+      "sizes": "192x192",
       "type": "image/png",
       "form_factor": "narrow",
       "label": "تطبيق الجوال"
     }
   ],
   "shortcuts": [
-    { "name": "لوحة التحكم", "short_name": "الرئيسية", "description": "عرض البيانات المالية والإحصائيات", "url": "./index.html?page=dashboard", "icons": [{ "src": "icon-192.png", "sizes": "192x192" }] },
-    { "name": "القطاعات", "short_name": "قطاعات", "description": "إدارة قطاعات المزرعة", "url": "./index.html?page=sectors", "icons": [{ "src": "icon-192.png", "sizes": "192x192" }] },
-    { "name": "المخزن", "short_name": "مخزن", "description": "إدارة مخزون العلف", "url": "./index.html?page=store", "icons": [{ "src": "icon-192.png", "sizes": "192x192" }] }
+    {
+      "name": "لوحة التحكم",
+      "short_name": "الرئيسية",
+      "description": "عرض البيانات المالية والإحصائيات",
+      "url": "./index.html?page=dashboard",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "القطاعات",
+      "short_name": "قطاعات",
+      "description": "إدارة قطاعات المزرعة",
+      "url": "./index.html?page=sectors",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "المخزن",
+      "short_name": "مخزن",
+      "description": "إدارة مخزون العلف",
+      "url": "./index.html?page=store",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
   ],
   "prefer_related_applications": false,
-  "edge_side_panel": { "enabled": true }
+  "share_target": {
+    "action": "./index.html",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "files": [
+        {
+          "name": "file",
+          "accept": ["application/json", ".json"]
+        }
+      ]
+    }
+  }
 }
