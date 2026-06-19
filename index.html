@@ -1336,26 +1336,29 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
     <div class="mo-hdl"></div>
     <div class="mo-ttl">🐠 إخراج سمك كبير (تصريف / بيع)</div>
     <input type="hidden" id="hv-sec">
+    <input type="hidden" id="hv-date">
     <div class="fg">
       <label class="fl">القطاع</label>
       <div id="hv-sec-label" style="font-size:14px;font-weight:800;color:var(--cyan);padding:8px 12px;background:rgba(0,180,216,.08);border:1px solid rgba(0,229,216,.2);border-radius:9px;"></div>
     </div>
     <div class="fg">
-      <label class="fl">نوع السمك المُخرج</label>
-      <select class="fc" id="hv-type">
-        <option value="بوري">🐟 بوري</option><option value="طوبار">🐠 طوبار</option>
-        <option value="شبار">🐡 شبار</option><option value="بياض">🫧 بياض</option><option value="مختلط">🐟 مختلط</option>
-      </select>
-    </div>
-    <div class="fg">
-      <label class="fl" style="color:var(--harvest-color);">💵 إجمالي مبلغ البيع (السمك الخارج بكام)</label>
+      <label class="fl" style="color:var(--harvest-color);">💵 مبلغ البيع (كامل السمك بالقطاع)</label>
       <div style="position:relative;">
-        <input class="fc" type="number" id="hv-total-price" placeholder="أدخل المبلغ الإجمالي" min="0" step="1"
+        <input class="fc" type="number" id="hv-total-price" placeholder="أدخل مبلغ البيع الصافي" min="0" step="1"
                style="border-color:var(--harvest-border);padding-left:50px;">
         <span style="position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:12px;font-weight:700;color:var(--harvest-color);pointer-events:none;">ج.م</span>
       </div>
+      <div style="font-size:10px;color:var(--muted);margin-top:5px;line-height:1.5;">
+        💡 أدخل المبلغ الصافي بعد خصم المصروفات (مواصلات/عمالة/شيالات) — سيُحسب الربح والخسارة تلقائياً مقابل تكلفة القطاع.
+      </div>
     </div>
-    <div class="fg"><label class="fl">التاريخ</label><input class="fc" type="date" id="hv-date"></div>
+    <div class="fg">
+      <label class="fl">📅 التاريخ والوقت (تلقائي)</label>
+      <div id="hv-datetime-label" style="font-size:13px;font-weight:700;color:var(--gold);padding:9px 12px;background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.22);border-radius:9px;display:flex;align-items:center;gap:8px;">
+        <span style="font-size:15px;">🕒</span>
+        <span id="hv-datetime-text">—</span>
+      </div>
+    </div>
     <div class="fg"><label class="fl">ملاحظات (اختياري)</label><input class="fc" type="text" id="hv-notes" placeholder="ملاحظات إضافية"></div>
     <div style="display:flex;gap:9px;">
       <button class="btn btn-harvest" onclick="doHarvest()">🐠 تأكيد الإخراج</button>
@@ -1966,30 +1969,53 @@ function openHarvest(secKey){
   document.getElementById('hv-sec-label').textContent = SECTORS[secKey]?.name || secKey;
   document.getElementById('hv-total-price').value='';
   document.getElementById('hv-notes').value='';
-  const today = new Date().toISOString().split('T')[0];
+  // ✅ التاريخ والوقت تلقائياً عند فتح النافذة
+  const now = new Date();
+  const today = now.toISOString().split('T')[0];
   document.getElementById('hv-date').value = today;
+  const dateAr = now.toLocaleDateString('ar-EG',{day:'2-digit',month:'long',year:'numeric'});
+  const timeAr = now.toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit',hour12:true});
+  const dtEl = document.getElementById('hv-datetime-text');
+  if(dtEl) dtEl.textContent = `${dateAr} — ${timeAr}`;
   oModal('mo-harvest');
 }
 async function doHarvest(){
   const sector = document.getElementById('hv-sec').value;
-  const type   = document.getElementById('hv-type').value;
   const totalRevenue = parseFloat(document.getElementById('hv-total-price').value);
   const date   = document.getElementById('hv-date').value;
   const notes  = document.getElementById('hv-notes').value;
-  if(!totalRevenue||totalRevenue<=0) return toast('❌ أدخل إجمالي مبلغ البيع','err');
-  if(!date) return toast('❌ اختر التاريخ','err');
+  if(!totalRevenue||totalRevenue<=0) return toast('❌ أدخل مبلغ البيع','err');
+  if(!date) return toast('❌ التاريخ غير متوفر','err');
+  // ✅ تخزين الوقت الفعلي كامل (timestamp + نص عربي)
+  const now = new Date();
+  const timeAr = now.toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit',hour12:true});
+  const dateAr = now.toLocaleDateString('ar-EG',{day:'2-digit',month:'long',year:'numeric'});
   const lr = window.dbPush(window.dbRef(db,'logs'));
   await window.dbSet(lr,{
-    type:'fish_out', fishType:type, qty: 0, qtyLabel: 'إخراج يدوي بالمبلغ', qtyRaw: 0, qtyUnit: 'manual',
-    pricePerUnit: 0, totalRevenue: totalRevenue, sector, date, notes, ts:ts()
+    type:'fish_out',
+    fishType: '',           // ✅ لم يُعد مطلوباً — بيع كامل السمك بالقطاع
+    qty: 0,
+    qtyLabel: 'كامل السمك بالقطاع',
+    qtyRaw: 0,
+    qtyUnit: 'manual',
+    pricePerUnit: 0,
+    totalRevenue: totalRevenue,
+    sector,
+    date,
+    time: timeAr,           // ✅ وقت العملية الفعلي
+    dateTimeText: `${dateAr} — ${timeAr}`, // ✅ نص منسق للعرض
+    notes,
+    ts:ts()
   });
   cModal('mo-harvest');
   const pnl = sectorPnL(sector);
-  const netAfter = (pnl.revenue+totalRevenue) - pnl.totalCost;
+  const netAfter = (pnl.revenue) - pnl.totalCost; // ✅ الإيراد يشمل العملية الحالية بعد الحفظ الفعلي عبر Firebase
+  // لحظة الإشعار نعيد حساب صافي القطاع بعد إضافة الإيراد الجديد
+  const expectedNet = (pnl.revenue + totalRevenue) - pnl.totalCost;
   const resultMsg = pnl.totalCost>0 && totalRevenue>0
-    ? (netAfter>0?` | 📈 ربح: ${fmtCost(netAfter)}`:netAfter<0?` | 📉 خسارة: ${fmtCost(Math.abs(netAfter))}`:'| ⚖️ تعادل')
+    ? (expectedNet>0?` | 📈 ربح: ${fmtCost(expectedNet)}`:expectedNet<0?` | 📉 خسارة: ${fmtCost(Math.abs(expectedNet))}`:'| ⚖️ تعادل')
     : '';
-  toast(`✅ تم إخراج ${type} بقيمة ${fmtCost(totalRevenue)}${resultMsg}`,'ok');
+  toast(`✅ تم إخراج كامل سمك القطاع بمبلغ ${fmtCost(totalRevenue)}${resultMsg}`,'ok');
 }
 
 function calcFishCostPreview(){
@@ -2214,8 +2240,9 @@ function renderPnLCards(){
   const rows = Object.entries(SECTORS).map(([k,sec])=>{
     const p = sectorPnL(k); if(p.revenue===0 && p.totalCost===0) return '';
     const hvLogs = Object.values(state.logs).filter(l=>l&&l.type==='fish_out'&&l.sector===k);
-    const byType={}; hvLogs.forEach(l=>{ const t=l.fishType||'غير محدد'; if(!byType[t]) byType[t]={rev:0}; byType[t].rev += l.totalRevenue||0; });
-    const typeTags = Object.entries(byType).map(([t,d])=> `<span style="display:inline-block;margin-left:8px;">${FISH_ICO[t]||'🐟'} ${t}:${d.rev>0?` <b style="color:var(--harvest-color);">${fmtCost(d.rev)}</b>`:''}</span>`).join('');
+    // ✅ تجميع الإيرادات حسب نوع السمك؛ الإدخالات بدون نوع تُعرض تحت "كامل السمك"
+    const byType={}; hvLogs.forEach(l=>{ const t=(l.fishType&&l.fishType.trim())?l.fishType:'كامل السمك'; if(!byType[t]) byType[t]={rev:0,count:0}; byType[t].rev += l.totalRevenue||0; byType[t].count += 1; });
+    const typeTags = Object.entries(byType).map(([t,d])=> `<span style="display:inline-block;margin-left:8px;">${FISH_ICO[t]||'🐟'} ${t}:${d.rev>0?` <b style="color:var(--harvest-color);">${fmtCost(d.rev)}</b>`:''} <span style="color:var(--muted);font-size:9px;">(${d.count} عملية)</span></span>`).join('');
     const pnlClass = p.net>0?'profit':p.net<0?'loss':'even'; const pnlIcon  = p.net>0?'📈 ربح':p.net<0?'📉 خسارة':'⚖️ تعادل';
     return `<div class="harvest-sec-row"><div class="harvest-sec-name"><div style="background:linear-gradient(135deg,${sec.color}22,${sec.color}11);width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px;">${sec.icon}</div>${sec.name}</div><div class="harvest-grid"><div class="harvest-kpi"><div class="kv" style="color:var(--harvest-color);">${fmtCost(p.revenue)||'—'}</div><div class="kl">إيرادات التصريف</div></div><div class="harvest-kpi"><div class="kv" style="color:var(--feed-cost-color);">${p.totalCost>0?fmtCost(p.totalCost):'—'}</div><div class="kl">تكلفة القطاع الكلية</div></div><div class="harvest-kpi"><div class="kv" style="color:var(--muted);">${hvLogs.length} عمليات</div><div class="kl">مرات الإخراج</div></div></div>${typeTags?`<div style="font-size:10px;color:var(--muted);margin-bottom:7px;line-height:1.8;">${typeTags}</div>`:''}<div class="harvest-pnl ${pnlClass}"><div class="harvest-pnl-lbl">${pnlIcon}</div><div class="harvest-pnl-val">${p.net!==0?fmtCost(Math.abs(p.net)):'صفر'}</div></div></div>`;
   }).join('');
@@ -2672,7 +2699,10 @@ function logHTML(log, withAct){
     title=`استلام علف ${log.feedType}% ${log.float==='float'?'🌊 عايم':'⬇️ غاطس'} → المخزن`;
     detail=`الكمية المُضافة: <b style="color:var(--cyan)">${log.qtyLabel||'—'}</b>`;
   } else if(log.type==='fish_out'){
-    title=`🐠 تصريف/بيع ${log.fishType||'سمك'} ← ${sname}`; detail=`<b style="color:var(--harvest-color)">${log.qtyLabel||'—'}</b>`;
+    // ✅ العنوان يعمل سواء أُختير نوع سمك أم لا (الوضع الجديد: بيع كامل السمك بالقطاع)
+    const fishLabel = log.fishType ? log.fishType : 'كامل السمك';
+    title=`🐠 تصريف/بيع ${fishLabel} ← ${sname}`;
+    detail=`<b style="color:var(--harvest-color)">${log.qtyLabel||'كامل السمك بالقطاع'}</b>`;
     if(log.totalRevenue>0) detail+=` | <b style="color:var(--harvest-color);">الإيراد: ${fmtCost(log.totalRevenue)}</b>`;
     const p = sectorPnL(log.sector||'');
     if(p.totalCost>0 && p.revenue>0){ const netIcon = p.net>0?'📈':'📉'; const netColor= p.net>=0?'var(--profit-color)':'var(--loss-color)'; detail+=` | ${netIcon} <b style="color:${netColor};">${fmtCost(Math.abs(p.net))}</b>`; }
@@ -2695,7 +2725,8 @@ function logHTML(log, withAct){
     acts += '</div>';
   }
   
-  return `<div class="log-item"><div class="li-ico ${cls[log.type]||''}">${icons[log.type]||'📌'}</div><div class="li-body"><div class="li-ttl">${title}</div><div class="li-det">${detail}</div><div class="li-time">📅 ${fmtDate(log.date)}</div>${acts}</div></div>`;
+  const timeStr = log.time ? ` — 🕒 ${log.time}` : '';
+  return `<div class="log-item"><div class="li-ico ${cls[log.type]||''}">${icons[log.type]||'📌'}</div><div class="li-body"><div class="li-ttl">${title}</div><div class="li-det">${detail}</div><div class="li-time">📅 ${fmtDate(log.date)}${timeStr}</div>${acts}</div></div>`;
 }
 
 function renderLogs(){
@@ -3790,8 +3821,8 @@ function exportAllData() {
   // الورقة 10: سجل التصريف والمبيعات لجميع القطاعات (شيت منفصل)
   // ════════════════════════════════════════════════════════════════
   const ws_harvest = [];
-  ws_harvest.push(['💰 سجل التصريف والمبيعات لجميع القطاعات', '', '', '', '', '', '']);
-  ws_harvest.push(['اسم القطاع', 'تاريخ التصريف', 'نوع السمكة', 'الكمية', 'سعر البيع', 'إجمالي الإيراد', 'ملاحظات']);
+  ws_harvest.push(['💰 سجل التصريف والمبيعات لجميع القطاعات', '', '', '', '', '', '', '']);
+  ws_harvest.push(['اسم القطاع', 'تاريخ التصريف', 'وقت العملية', 'نوع السمكة', 'الكمية / البيان', 'سعر البيع', 'إجمالي الإيراد', 'ملاحظات']);
 
   let grandHarvest = 0;
   Object.entries(SECTORS).forEach(([secKey, sec]) => {
@@ -3802,23 +3833,24 @@ function exportAllData() {
       ws_harvest.push([
         sec.name,
         l.date || '-',
-        l.fishType || '-',
-        l.qtyLabel || mvFmtKg(l.qty),
+        l.time || '-',
+        (l.fishType && l.fishType.trim()) ? l.fishType : 'كامل السمك',
+        l.qtyLabel || 'كامل السمك بالقطاع',
         '',
         (l.totalRevenue || 0) > 0 ? l.totalRevenue.toLocaleString('ar-EG') + ' ج.م' : '-',
         l.notes || ''
       ]);
     });
     if (harvestLogs.length > 0) {
-      ws_harvest.push(['📊 إجمالي تصريف ' + sec.name, '', '', '', '', secRev > 0 ? secRev.toLocaleString('ar-EG') + ' ج.م' : '0.00 ج.م', '']);
+      ws_harvest.push(['📊 إجمالي تصريف ' + sec.name, '', '', '', '', '', secRev > 0 ? secRev.toLocaleString('ar-EG') + ' ج.م' : '0.00 ج.م', '']);
     }
     grandHarvest += secRev;
   });
 
   if (grandHarvest > 0) {
-    ws_harvest.push(['📊 الإجمالي العام للتصريف', '', '', '', '', grandHarvest.toLocaleString('ar-EG') + ' ج.م', '']);
+    ws_harvest.push(['📊 الإجمالي العام للتصريف', '', '', '', '', '', grandHarvest.toLocaleString('ar-EG') + ' ج.م', '']);
   } else {
-    ws_harvest.push(['لا توجد سجلات تصريف مسجلة في أي قطاع', '', '', '', '', '', '']);
+    ws_harvest.push(['لا توجد سجلات تصريف مسجلة في أي قطاع', '', '', '', '', '', '', '']);
   }
 
   const ws_hv = XLSX.utils.aoa_to_sheet(ws_harvest);
@@ -3854,7 +3886,7 @@ function exportAllData() {
     if (l.type === 'store_in') { detailsStr = 'علف ' + l.feedType + '% — ' + (l.float === 'float' ? 'طافي' : 'غاطس'); qtyStr = l.qtyLabel || mvFmtKg(l.qty); }
     else if (l.type === 'feed_out') { detailsStr = 'علف بروتين ' + l.feedType + '% ' + (l.float === 'float' ? 'طافي' : 'غاطس') + (secName ? ' موجه إلى ← ' + secName : '') + (l.feedCost > 0 ? ' — القيمة الكلية: ' + l.feedCost.toLocaleString('ar-EG') + ' ج.م' : ''); qtyStr = l.qtyLabel || mvFmtKg(l.qty); }
     else if (l.type === 'fish_in') { detailsStr = 'إنزال أسماك حية: ' + (l.fishType || '') + (secName ? ' بحوض: ' + secName : '') + (l.totalCost > 0 ? ' — التكلفة: ' + l.totalCost.toLocaleString('ar-EG') + ' ج.م' : ''); qtyStr = l.fishDisplay || mvFmtKg(l.qty); }
-    else if (l.type === 'fish_out') { detailsStr = 'بيع وتصريف ' + (l.fishType || '') + (secName ? ' من حوض: ' + secName : '') + (l.totalRevenue > 0 ? ' — إجمالي إيراد البيع: ' + l.totalRevenue.toLocaleString('ar-EG') + ' ج.م' : ''); qtyStr = l.qtyLabel || mvFmtKg(l.qty); }
+    else if (l.type === 'fish_out') { detailsStr = 'بيع وتصريف ' + ((l.fishType && l.fishType.trim()) ? l.fishType : 'كامل السمك') + (secName ? ' من حوض: ' + secName : '') + (l.totalRevenue > 0 ? ' — إجمالي إيراد البيع: ' + l.totalRevenue.toLocaleString('ar-EG') + ' ج.م' : ''); qtyStr = l.qtyLabel || 'كامل السمك بالقطاع'; }
     else if (l.type === 'zaria_in') { detailsStr = 'زريعة جديدة: ' + (l.fishType || '') + (secName ? ' بالحوض: ' + secName : ''); qtyStr = (l.qty || 0).toLocaleString('ar-EG') + ' قطعة'; }
     else if (l.type === 'zaria_feed') { detailsStr = 'تغذية قطاع الزريعة' + (secName ? ' بحوض: ' + secName : ''); qtyStr = (l.weight || 0) + ' كجم'; }
     else if (l.type === 'store_edit' || l.type === 'stock_edit') { detailsStr = (l.feedType ? 'تعديل صنف علف ' + l.feedType + '%' : 'تعديل رصيد المخزن المباشر') + (l.oldQty !== undefined ? ' (القديم كان: ' + mvFmtKg(l.oldQty) + ')' : ''); qtyStr = mvFmtKg(l.qty); }
@@ -4003,8 +4035,8 @@ function buildSeparatedSheets(sectorKeys) {
 
   // ── شيت 7: التصريف والمبيعات ──
   const hvData = [];
-  hvData.push(['💰 سجل التصريف والمبيعات', '', '', '', '', '', '']);
-  hvData.push(['اسم القطاع', 'تاريخ التصريف', 'نوع السمكة', 'الكمية', 'سعر البيع', 'إجمالي الإيراد', 'ملاحظات']);
+  hvData.push(['💰 سجل التصريف والمبيعات', '', '', '', '', '', '', '']);
+  hvData.push(['اسم القطاع', 'تاريخ التصريف', 'وقت العملية', 'نوع السمكة', 'الكمية / البيان', 'سعر البيع', 'إجمالي الإيراد', 'ملاحظات']);
   let gHvRev = 0;
   sectorKeys.forEach(secKey => {
     const sec = SECTORS[secKey];
@@ -4012,13 +4044,13 @@ function buildSeparatedSheets(sectorKeys) {
     let sR = 0;
     hvLogs.forEach(l => {
       sR += (l.totalRevenue || 0);
-      hvData.push([sec.name, l.date || '-', l.fishType || '-', l.qtyLabel || mvFmtKg(l.qty), '', (l.totalRevenue || 0) > 0 ? l.totalRevenue.toLocaleString('ar-EG') + ' ج.م' : '-', l.notes || '']);
+      hvData.push([sec.name, l.date || '-', l.time || '-', (l.fishType && l.fishType.trim()) ? l.fishType : 'كامل السمك', l.qtyLabel || 'كامل السمك بالقطاع', '', (l.totalRevenue || 0) > 0 ? l.totalRevenue.toLocaleString('ar-EG') + ' ج.م' : '-', l.notes || '']);
     });
-    if (hvLogs.length > 0) hvData.push(['📊 إجمالي تصريف ' + sec.name, '', '', '', '', sR > 0 ? sR.toLocaleString('ar-EG') + ' ج.م' : '0.00 ج.م', '']);
+    if (hvLogs.length > 0) hvData.push(['📊 إجمالي تصريف ' + sec.name, '', '', '', '', '', sR > 0 ? sR.toLocaleString('ar-EG') + ' ج.م' : '0.00 ج.م', '']);
     gHvRev += sR;
   });
-  if (gHvRev > 0) hvData.push(['📊 الإجمالي العام للتصريف', '', '', '', '', gHvRev.toLocaleString('ar-EG') + ' ج.م', '']);
-  else hvData.push(['لا توجد سجلات تصريف', '', '', '', '', '', '']);
+  if (gHvRev > 0) hvData.push(['📊 الإجمالي العام للتصريف', '', '', '', '', '', gHvRev.toLocaleString('ar-EG') + ' ج.م', '']);
+  else hvData.push(['لا توجد سجلات تصريف', '', '', '', '', '', '', '']);
   sheets.push({ name: 'التصريف والمبيعات', data: hvData });
 
   // ── شيت 8: الأداء المالي ──
