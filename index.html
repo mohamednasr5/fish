@@ -1038,8 +1038,8 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
     <div class="pg" id="pg-sectors">
       <div class="pg-ttl">🌊 إدارة القطاعات</div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
-                    <button class="btn btn-gold" style="width:auto;padding:10px 14px;" onclick="exportAllData()">⬇️ تقرير المزرعة الشامل</button>
-                    <button class="btn btn-gold" style="width:auto;padding:10px 14px;background:linear-gradient(135deg,#0a7c5c,#06d6a0);" onclick="exportAllSectors()">📊 تقرير القطاعات السبعة</button>
+                    <button class="btn btn-gold" style="width:auto;padding:10px 14px;" onclick="exportAllData()">📄 تقرير المزرعة الشامل (PDF)</button>
+                    <button class="btn btn-gold" style="width:auto;padding:10px 14px;background:linear-gradient(135deg,#0a7c5c,#06d6a0);" onclick="exportAllSectors()">📄 تقرير القطاعات السبعة (PDF)</button>
                     <button class="btn btn-danger" style="width:auto;padding:10px 14px;" onclick="resetAllProgramData()">🗑️ تصفير كامل البرنامج</button>
                 </div>
       <div id="sectorsEl"><div class="loading"><div class="spin"></div> تحميل...</div></div>
@@ -2615,7 +2615,7 @@ function renderSectors(){
         </div>
 
         <div style="display:flex; gap:7px; margin-top:7px;">
-          <button class="btn btn-gold" style="flex:1;" onclick="exportSectorData('${k}')">⬇️ تصدير القطاع (Excel)</button>
+          <button class="btn btn-gold" style="flex:1;" onclick="exportSectorData('${k}')">📄 تصدير القطاع (PDF)</button>
           <button class="btn btn-danger" style="flex:1;" onclick="resetSectorData('${k}')">🗑️ تصفير القطاع</button>
         </div>
       </div>
@@ -3333,6 +3333,161 @@ function exportToFile(workbook, fileName) {
   }
 }
 
+// ══════════════════════════════════════════════════════════════════
+// 📄 دوال تصدير PDF (بديل لـ Excel) — تعتمد على نافذة الطباعة بالمتصفح
+// يقوم النظام ببناء صفحة HTML كاملة، فتحها في iframe مخفي، ثم طباعتها
+// حيث يختار المستخدم "حفظ كـ PDF" من نافذة الطباعة.
+// ══════════════════════════════════════════════════════════════════
+
+// الهروب من حقن HTML
+function _pdfEsc(v) {
+  if (v === null || v === undefined) return '';
+  return String(v)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// فتح نافذة طباعة داخل iframe لتتمكن من حفظها كـ PDF
+function openPrintWindow(html, fileName) {
+  var old = document.getElementById('__print_frame__');
+  if (old) old.remove();
+  var iframe = document.createElement('iframe');
+  iframe.id = '__print_frame__';
+  iframe.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:99999;background:#fff;';
+  document.body.appendChild(iframe);
+  iframe.contentDocument.open();
+  iframe.contentDocument.write(html);
+  iframe.contentDocument.close();
+  iframe.addEventListener('load', function () {
+    try {
+      var iDoc = iframe.contentDocument;
+      var bar = iDoc.createElement('div');
+      bar.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#0F2C59;padding:12px 20px;display:flex;gap:10px;justify-content:center;z-index:9999;flex-wrap:wrap;';
+      bar.innerHTML =
+        '<button onclick="window.print()" style="background:#D8AE7E;color:#1a1a2e;border:none;padding:11px 28px;border-radius:8px;font-size:14px;font-weight:900;cursor:pointer;font-family:Cairo,Arial,sans-serif">🖨️ طباعة / حفظ PDF</button>' +
+        '<button onclick="window.parent.document.getElementById(\'__print_frame__\').remove()" style="background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);padding:11px 20px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:Cairo,Arial,sans-serif">✖ إغلاق</button>';
+      var printStyle = iDoc.createElement('style');
+      printStyle.textContent = '@media print { #__ctrl_bar__ { display:none !important; } } body { padding-bottom: 70px !important; }';
+      bar.id = '__ctrl_bar__';
+      iDoc.body.appendChild(bar);
+      iDoc.head.appendChild(printStyle);
+    } catch (e) { console.error(e); }
+  });
+}
+
+// تحويل مصفوفة ثنائية الأبعاد (AOA) إلى جدول HTML مصمم
+// الصف الأول يُعتبر عنوان قسم، والصف الثاني رؤوس أعمدة، وباقي الصفوف بيانات
+// الصفوف التي تبدأ بـ 📊 أو كلمة "إجمالي" تُعتبر صفوف إجماليات (لون مميز)
+function aoaToHTMLTable(rows) {
+  if (!rows || !rows.length) {
+    return '<div style="text-align:center;color:#999;padding:14px">لا توجد بيانات</div>';
+  }
+
+  // حساب عدد الأعمدة الأقصى
+  var colCount = 0;
+  for (var i = 0; i < rows.length; i++) {
+    if (rows[i] && rows[i].length > colCount) colCount = rows[i].length;
+  }
+  if (colCount === 0) return '<div style="text-align:center;color:#999;padding:14px">لا توجد بيانات</div>';
+
+  // الصف الأول = عنوان القسم (عادة يكون خلية واحدة ممتلئة وباقي الخلايا فارغة)
+  var titleRow = rows[0] || [];
+  var title = _pdfEsc(String(titleRow[0] || '').trim());
+
+  // الصف الثاني = رؤوس الأعمدة (إذا وجد)
+  var headerRow = rows.length > 1 ? (rows[1] || []) : null;
+
+  // باقي الصفوف = بيانات
+  var dataRows = rows.length > 2 ? rows.slice(2) : [];
+
+  var html = '';
+  if (title) {
+    html += '<h3 class="sheet-title">' + title + '</h3>';
+  }
+
+  html += '<table class="data-table">';
+  if (headerRow) {
+    html += '<thead><tr>';
+    for (var c = 0; c < colCount; c++) {
+      html += '<th>' + _pdfEsc(headerRow[c] != null ? headerRow[c] : '') + '</th>';
+    }
+    html += '</tr></thead>';
+  }
+  html += '<tbody>';
+  for (var r = 0; r < dataRows.length; r++) {
+    var row = dataRows[r] || [];
+    var firstVal = String(row[0] != null ? row[0] : '').trim();
+    var isTotal = firstVal.indexOf('📊') === 0 ||
+                  firstVal.indexOf('الإجمالي') === 0 ||
+                  firstVal.indexOf('إجمالي') === 0;
+
+    var rowClass = '';
+    if (isTotal) {
+      // تحقق من آخر خلية لمعرفة إن كان ربح أو خسارة
+      var lastVal = String(row[colCount - 1] != null ? row[colCount - 1] : '');
+      if (lastVal.indexOf('-') > -1 && /\d/.test(lastVal)) rowClass = 'loss-row';
+      else if (lastVal.indexOf('+') > -1) rowClass = 'profit-row';
+      else rowClass = 'total-row';
+    } else if (r % 2 === 1) {
+      rowClass = 'alt-row';
+    }
+
+    html += '<tr class="' + rowClass + '">';
+    for (var c2 = 0; c2 < colCount; c2++) {
+      var cellVal = row[c2] != null ? row[c2] : '';
+      // إذا كان صف إجمالي والخلية الفارغة، اعرضها فارغة (لا dash)
+      var display = (isTotal && (cellVal === '' || cellVal === 0)) ? '' : cellVal;
+      html += '<td>' + _pdfEsc(display) + '</td>';
+    }
+    html += '</tr>';
+  }
+  html += '</tbody></table>';
+  return html;
+}
+
+// تحويل مجموعة أوراق عمل (sheets) إلى مستند HTML كامل جاهز للطباعة كـ PDF
+function sheetsToHTML(sheets, mainTitle, subTitle) {
+  var today = new Date().toLocaleDateString('ar-EG', { day: '2-digit', month: 'long', year: 'numeric' });
+  var timeStr = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+
+  var sheetsHTML = sheets.map(function (s) {
+    return '<section class="sheet-section">' + aoaToHTMLTable(s.data) + '</section>';
+  }).join('');
+
+  return '<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">' +
+    '<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">' +
+    '<style>' +
+    '* { box-sizing: border-box; }' +
+    'body { font-family: "Cairo", sans-serif; padding: 24px; max-width: 1100px; margin: auto; color: #1a1a2e; background: #fff; line-height: 1.6; }' +
+    '.doc-header { text-align: center; border-bottom: 3px solid #0F2C59; padding-bottom: 16px; margin-bottom: 24px; }' +
+    '.doc-header h1 { color: #0F2C59; font-size: 22px; margin: 0 0 4px; font-weight: 900; }' +
+    '.doc-header .sub { color: #1E5128; font-size: 15px; font-weight: 700; margin: 0 0 6px; }' +
+    '.doc-header .meta { color: #555; font-size: 12px; }' +
+    '.sheet-section { margin-bottom: 28px; page-break-inside: avoid; }' +
+    '.sheet-title { background: #4F709C; color: #fff; padding: 9px 14px; border-radius: 8px 8px 0 0; font-size: 14px; font-weight: 900; margin: 0 0 -1px; }' +
+    '.data-table { width: 100%; border-collapse: collapse; font-size: 11.5px; }' +
+    '.data-table th { background: #1E5128; color: #fff; padding: 8px 6px; text-align: center; font-weight: 700; border: 1px solid #1E5128; font-size: 11.5px; }' +
+    '.data-table td { padding: 6px; border: 1px solid #d8d8d8; text-align: center; vertical-align: middle; }' +
+    '.data-table tbody tr td:first-child { text-align: right; font-weight: 600; }' +
+    '.data-table tbody tr.alt-row { background: #F5F7F8; }' +
+    '.data-table tbody tr.total-row { background: #D8AE7E; font-weight: 900; color: #000; }' +
+    '.data-table tbody tr.profit-row { background: #C1E1C1; font-weight: 900; color: #1E5128; }' +
+    '.data-table tbody tr.loss-row { background: #F8C8DC; font-weight: 900; color: #922B21; }' +
+    '.footer { text-align: center; color: #888; font-size: 11px; margin-top: 28px; border-top: 1px solid #eee; padding-top: 12px; }' +
+    '@media print { .sheet-section { page-break-inside: avoid; } tr { page-break-inside: avoid; } body { padding: 12px; max-width: 100%; } }' +
+    '</style></head><body>' +
+    '<div class="doc-header">' +
+    '<h1>🐟 ' + _pdfEsc(mainTitle) + '</h1>' +
+    (subTitle ? '<div class="sub">' + _pdfEsc(subTitle) + '</div>' : '') +
+    '<div class="meta">📅 تاريخ التصدير: ' + today + ' — 🕒 ' + timeStr + '</div>' +
+    '</div>' +
+    sheetsHTML +
+    '<div class="footer">تم إنشاء هذا التقرير بواسطة نظام إدارة مزرعة الاستزراع السمكي</div>' +
+    '</body></html>';
+}
+
 
 // ══════════════════════════════════════════════════════════
 // 🔄 دوال قسم الحركات الكاملة
@@ -3496,6 +3651,7 @@ function renderMovements(){
 function exportAllData() {
   if (typeof XLSX === 'undefined') return toast('❌ يرجى الانتظار لحين تحميل المكتبات...', 'err');
   const wb = XLSX.utils.book_new();
+  const sheets = [];
 
   // ════════════════════════════════════════════════════════════════
   // الورقة 1: لوحة التحكم والإحصائيات الرئيسية
@@ -3518,9 +3674,7 @@ function exportAllData() {
     (netPnL >= 0 ? '+' : '') + netPnL.toLocaleString('ar-EG') + ' ج.م'
   ]);
 
-  const ws_d = XLSX.utils.aoa_to_sheet(ws_dash);
-  applyExcelFormatting(ws_d);
-  XLSX.utils.book_append_sheet(wb, ws_d, 'لوحة التحكم');
+  sheets.push({ name: 'لوحة التحكم', data: ws_dash });
 
   // ════════════════════════════════════════════════════════════════
   // الورقة 2: بيانات الأسماك لجميع القطاعات (شيت منفصل)
@@ -3559,9 +3713,7 @@ function exportAllData() {
     ws_fish.push(['لا توجد أسماك مسجلة حالياً في أي قطاع', '', '', '', '', '', '', '']);
   }
 
-  const ws_f = XLSX.utils.aoa_to_sheet(ws_fish);
-  applyExcelFormatting(ws_f);
-  XLSX.utils.book_append_sheet(wb, ws_f, 'الأسماك');
+  sheets.push({ name: 'الأسماك', data: ws_fish });
 
   // ════════════════════════════════════════════════════════════════
   // الورقة 3: بيانات الزريعة لجميع القطاعات (شيت منفصل)
@@ -3599,9 +3751,7 @@ function exportAllData() {
     ws_zaria.push(['لا توجد سجلات زريعة مسجلة في أي قطاع', '', '', '', '', '', '']);
   }
 
-  const ws_z = XLSX.utils.aoa_to_sheet(ws_zaria);
-  applyExcelFormatting(ws_z);
-  XLSX.utils.book_append_sheet(wb, ws_z, 'الزريعة');
+  sheets.push({ name: 'الزريعة', data: ws_zaria });
 
   // ════════════════════════════════════════════════════════════════
   // الورقة 4: علف الزريعة لجميع القطاعات (شيت منفصل)
@@ -3640,9 +3790,7 @@ function exportAllData() {
     ws_zfeed.push(['لا توجد سجلات علف زريعة مسجلة في أي قطاع', '', '', '', '', '', '', '']);
   }
 
-  const ws_zf = XLSX.utils.aoa_to_sheet(ws_zfeed);
-  applyExcelFormatting(ws_zf);
-  XLSX.utils.book_append_sheet(wb, ws_zf, 'علف الزريعة');
+  sheets.push({ name: 'علف الزريعة', data: ws_zfeed });
 
   // ════════════════════════════════════════════════════════════════
   // الورقة 5: مصاريف الزريعة لجميع القطاعات (شيت منفصل)
@@ -3677,9 +3825,7 @@ function exportAllData() {
     ws_zexp.push(['لا توجد مصاريف زريعة مسجلة في أي قطاع', '', '', '', '']);
   }
 
-  const ws_ze = XLSX.utils.aoa_to_sheet(ws_zexp);
-  applyExcelFormatting(ws_ze);
-  XLSX.utils.book_append_sheet(wb, ws_ze, 'مصاريف الزريعة');
+  sheets.push({ name: 'مصاريف الزريعة', data: ws_zexp });
 
   // ════════════════════════════════════════════════════════════════
   // الورقة 6: المصاريف التشغيلية الإضافية لجميع القطاعات (شيت منفصل)
@@ -3714,9 +3860,7 @@ function exportAllData() {
     ws_extras.push(['لا توجد مصاريف تشغيلية مسجلة في أي قطاع', '', '', '', '']);
   }
 
-  const ws_ex = XLSX.utils.aoa_to_sheet(ws_extras);
-  applyExcelFormatting(ws_ex);
-  XLSX.utils.book_append_sheet(wb, ws_ex, 'المصاريف التشغيلية');
+  sheets.push({ name: 'المصاريف التشغيلية', data: ws_extras });
 
   // ════════════════════════════════════════════════════════════════
   // الورقة 7: تكاليف استهلاك العلف لجميع القطاعات (شيت منفصل)
@@ -3752,9 +3896,7 @@ function exportAllData() {
     ws_feedcost.push(['لا توجد سجلات استهلاك علف مسجلة في أي قطاع', '', '', '', '', '']);
   }
 
-  const ws_fc = XLSX.utils.aoa_to_sheet(ws_feedcost);
-  applyExcelFormatting(ws_fc);
-  XLSX.utils.book_append_sheet(wb, ws_fc, 'تكاليف العلف');
+  sheets.push({ name: 'تكاليف العلف', data: ws_feedcost });
 
   // ════════════════════════════════════════════════════════════════
   // الورقة 8: تقرير الأداء المالي والأرباح لكل قطاع (شيت منفصل)
@@ -3791,9 +3933,7 @@ function exportAllData() {
     (sumNt >= 0 ? '+' : '') + sumNt.toLocaleString('ar-EG') + ' ج.م'
   ]);
 
-  const ws_p = XLSX.utils.aoa_to_sheet(ws_pnl);
-  applyExcelFormatting(ws_p);
-  XLSX.utils.book_append_sheet(wb, ws_p, 'الأداء المالي');
+  sheets.push({ name: 'الأداء المالي', data: ws_pnl });
 
   // ════════════════════════════════════════════════════════════════
   // الورقة 9: أرصدة الأعلاف المتاحة بالمخزن الحالي (شيت منفصل)
@@ -3813,9 +3953,7 @@ function exportAllData() {
   });
   ws_store.push(['📊 إجمالي جرد رصيد المخازن', '', sb25, sb50, ston, skg.toFixed(1) + ' كجم']);
 
-  const ws_st = XLSX.utils.aoa_to_sheet(ws_store);
-  applyExcelFormatting(ws_st);
-  XLSX.utils.book_append_sheet(wb, ws_st, 'المخزن');
+  sheets.push({ name: 'المخزن', data: ws_store });
 
   // ════════════════════════════════════════════════════════════════
   // الورقة 10: سجل التصريف والمبيعات لجميع القطاعات (شيت منفصل)
@@ -3853,9 +3991,7 @@ function exportAllData() {
     ws_harvest.push(['لا توجد سجلات تصريف مسجلة في أي قطاع', '', '', '', '', '', '', '']);
   }
 
-  const ws_hv = XLSX.utils.aoa_to_sheet(ws_harvest);
-  applyExcelFormatting(ws_hv);
-  XLSX.utils.book_append_sheet(wb, ws_hv, 'التصريف والمبيعات');
+  sheets.push({ name: 'التصريف والمبيعات', data: ws_harvest });
 
   // ════════════════════════════════════════════════════════════════
   // الورقة الأخيرة: السجل الكامل الشامل للحركات والعمليات
@@ -3899,12 +4035,11 @@ function exportAllData() {
 
   if (!allLogs.length) mv_data.push(['لا توجد عمليات أو حركات مسجلة بالنظام حتى الآن', '', '', '', '', '', '']);
 
-  const ws_mv = XLSX.utils.aoa_to_sheet(mv_data);
-  applyExcelFormatting(ws_mv);
-  XLSX.utils.book_append_sheet(wb, ws_mv, 'سجل التحركات العام');
+  sheets.push({ name: 'سجل التحركات العام', data: mv_data });
 
-  const currentFileName = 'تقرير_مزرعة_الأسماك_الشامل_' + new Date().toISOString().split('T')[0] + '.xlsx';
-  exportToFile(wb, currentFileName);
+  const html = sheetsToHTML(sheets, 'تقرير مزرعة الاستزراع السمكي الشامل', '📊 تقرير شامل لجميع بيانات المزرعة والقطاعات والمخزن والحركات');
+  openPrintWindow(html, 'تقرير_مزرعة_الأسماك_الشامل_' + new Date().toISOString().split('T')[0]);
+  toast('📄 اختر "حفظ كـ PDF" من نافذة الطباعة', 'ok');
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -4072,31 +4207,23 @@ function buildSeparatedSheets(sectorKeys) {
   return sheets;
 }
 
-// تصدير قطاع واحد (الزر الموجود بجوار كل قطاع) — شيت منفصل لكل نوع بيانات
+// تصدير قطاع واحد (الزر الموجود بجوار كل قطاع) — تقرير PDF منفصل لكل نوع بيانات
 function exportSectorData(secKey) {
   if (typeof XLSX === 'undefined') return toast('❌ يرجى الانتظار...', 'err');
-  const wb = XLSX.utils.book_new();
   const sheets = buildSeparatedSheets([secKey]);
-  sheets.forEach(s => {
-    const ws = XLSX.utils.aoa_to_sheet(s.data);
-    applyExcelFormatting(ws);
-    XLSX.utils.book_append_sheet(wb, ws, s.name.substring(0, 31));
-  });
   const secName = SECTORS[secKey] ? SECTORS[secKey].name : secKey;
-  exportToFile(wb, 'تقرير_' + secName + '_' + new Date().toISOString().split('T')[0] + '.xlsx');
+  const html = sheetsToHTML(sheets, 'تقرير قطاع: ' + secName, '📋 تقرير تفصيلي شامل لجميع بيانات هذا القطاع');
+  openPrintWindow(html, 'تقرير_' + secName + '_' + new Date().toISOString().split('T')[0]);
+  toast('📄 اختر "حفظ كـ PDF" من نافذة الطباعة', 'ok');
 }
 
-// تصدير جميع القطاعات السبعة في ملف واحد — كل نوع بيانات في شيت منفصل
+// تصدير جميع القطاعات السبعة في تقرير PDF واحد — كل نوع بيانات في قسم منفصل
 function exportAllSectors() {
   if (typeof XLSX === 'undefined') return toast('❌ يرجى الانتظار...', 'err');
-  const wb = XLSX.utils.book_new();
   const sheets = buildSeparatedSheets(Object.keys(SECTORS));
-  sheets.forEach(s => {
-    const ws = XLSX.utils.aoa_to_sheet(s.data);
-    applyExcelFormatting(ws);
-    XLSX.utils.book_append_sheet(wb, ws, s.name.substring(0, 31));
-  });
-  exportToFile(wb, 'تقرير_القطاعات_المنفصل_' + new Date().toISOString().split('T')[0] + '.xlsx');
+  const html = sheetsToHTML(sheets, 'تقرير القطاعات السبعة', '📊 تقرير مقارن لجميع القطاعات بأنواع البيانات المختلفة');
+  openPrintWindow(html, 'تقرير_القطاعات_المنفصل_' + new Date().toISOString().split('T')[0]);
+  toast('📄 اختر "حفظ كـ PDF" من نافذة الطباعة', 'ok');
 }
 
 // ══════════════════════════════════════════
