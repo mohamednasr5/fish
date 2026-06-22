@@ -3703,7 +3703,7 @@ function exportAllData() {
 
   let grandFishQty = 0, grandFishCost = 0;
   Object.entries(SECTORS).forEach(([secKey, sec]) => {
-    const fishArr = Object.values((state.sectors[secKey] || {}).fish || {});
+    const fishArr = Object.values((state.sectors[secKey] || {}).fish || {}).sort((a,b)=>(a.date||'')<(b.date||'')?-1:1);
     let secQty = 0, secCost = 0;
     fishArr.forEach(f => {
       const c = (f.value || 0) * (f.price || 0);
@@ -3742,7 +3742,7 @@ function exportAllData() {
 
   let grandZariaQty = 0, grandZariaCost = 0;
   Object.entries(SECTORS).forEach(([secKey, sec]) => {
-    const zariaList = Object.values((state.sectors[secKey] || {}).zaria || {});
+    const zariaList = Object.values((state.sectors[secKey] || {}).zaria || {}).sort((a,b)=>(a.date||'')<(b.date||'')?-1:1);
     let secQty = 0, secCost = 0;
     zariaList.forEach(z => {
       const zc = (z.qty || 0) * (z.price || 0);
@@ -3780,7 +3780,7 @@ function exportAllData() {
 
   let grandZFeedKg = 0, grandZFeedCost = 0;
   Object.entries(SECTORS).forEach(([secKey, sec]) => {
-    const zariaFeedList = Object.values((state.sectors[secKey] || {}).zariaFeed || {});
+    const zariaFeedList = Object.values((state.sectors[secKey] || {}).zariaFeed || {}).sort((a,b)=>(a.date||'')<(b.date||'')?-1:1);
     let secKg = 0, secCost = 0;
     zariaFeedList.forEach(zf => {
       const unitPrice = (zf.weight > 0 && zf.cost > 0) ? (zf.cost / zf.weight).toFixed(2) : '-';
@@ -3819,7 +3819,7 @@ function exportAllData() {
 
   let grandZExpCost = 0;
   Object.entries(SECTORS).forEach(([secKey, sec]) => {
-    const zariaExpList = Object.values((state.sectors[secKey] || {}).zariaExpenses || {});
+    const zariaExpList = Object.values((state.sectors[secKey] || {}).zariaExpenses || {}).sort((a,b)=>(a.date||'')<(b.date||'')?-1:1);
     let secCost = 0;
     zariaExpList.forEach(ze => {
       secCost += (ze.amount || 0);
@@ -3854,7 +3854,7 @@ function exportAllData() {
 
   let grandExtraCost = 0;
   Object.entries(SECTORS).forEach(([secKey, sec]) => {
-    const extras = Object.values((state.sectors[secKey] || {}).extras || {});
+    const extras = Object.values((state.sectors[secKey] || {}).extras || {}).sort((a,b)=>(a.date||'')<(b.date||'')?-1:1);
     let secCost = 0;
     extras.forEach(e => {
       secCost += (e.amount || 0);
@@ -3889,7 +3889,7 @@ function exportAllData() {
 
   let grandFeedKg = 0, grandFeedC = 0;
   Object.entries(SECTORS).forEach(([secKey, sec]) => {
-    const feedLogs = Object.values(state.logs || {}).filter(l => l && l.type === 'feed_out' && l.sector === secKey);
+    const feedLogs = Object.values(state.logs || {}).filter(l => l && l.type === 'feed_out' && l.sector === secKey).sort((a,b)=>{const da=a.date||'',db2=b.date||'';if(da!==db2)return da<db2?-1:1;return(a.ts||0)-(b.ts||0);});
     let secKg = 0, secCost = 0;
     feedLogs.forEach(l => {
       secKg += (l.qty || 0); secCost += (l.feedCost || 0);
@@ -3982,7 +3982,7 @@ function exportAllData() {
 
   let grandHarvest = 0;
   Object.entries(SECTORS).forEach(([secKey, sec]) => {
-    const harvestLogs = Object.values(state.logs || {}).filter(l => l && l.type === 'fish_out' && l.sector === secKey);
+    const harvestLogs = Object.values(state.logs || {}).filter(l => l && l.type === 'fish_out' && l.sector === secKey).sort((a,b)=>{const da=a.date||'',db2=b.date||'';if(da!==db2)return da<db2?-1:1;return(a.ts||0)-(b.ts||0);});
     let secRev = 0;
     harvestLogs.forEach(l => {
       secRev += (l.totalRevenue || 0);
@@ -4027,8 +4027,8 @@ function exportAllData() {
 
   const allLogs = Object.values(state.logs || {}).filter(l => l).sort((a, b) => {
     const da = a.date || '', db2 = b.date || '';
-    if (da !== db2) return da > db2 ? -1 : 1;
-    return (b.ts || 0) - (a.ts || 0);
+    if (da !== db2) return da < db2 ? -1 : 1;
+    return (a.ts || 0) - (b.ts || 0);
   });
 
   allLogs.forEach(l => {
@@ -4076,7 +4076,7 @@ function buildSeparatedSheets(sectorKeys) {
   let gFishQty = 0, gFishCost = 0;
   sectorKeys.forEach(secKey => {
     const sec = SECTORS[secKey];
-    const fishArr = Object.values((state.sectors[secKey] || {}).fish || {});
+    const fishArr = Object.values((state.sectors[secKey] || {}).fish || {}).sort((a,b)=>(a.date||'')<(b.date||'')?-1:1);
     let sQ = 0, sC = 0;
     fishArr.forEach(f => {
       const c = (f.value || 0) * (f.price || 0);
@@ -4097,7 +4097,7 @@ function buildSeparatedSheets(sectorKeys) {
   let gZQty = 0, gZCost = 0;
   sectorKeys.forEach(secKey => {
     const sec = SECTORS[secKey];
-    const zList = Object.values((state.sectors[secKey] || {}).zaria || {});
+    const zList = Object.values((state.sectors[secKey] || {}).zaria || {}).sort((a,b)=>(a.date||'')<(b.date||'')?-1:1);
     let sQ = 0, sC = 0;
     zList.forEach(z => {
       const zc = (z.qty || 0) * (z.price || 0);
@@ -4118,7 +4118,7 @@ function buildSeparatedSheets(sectorKeys) {
   let gZFKg = 0, gZFCost = 0;
   sectorKeys.forEach(secKey => {
     const sec = SECTORS[secKey];
-    const zfList = Object.values((state.sectors[secKey] || {}).zariaFeed || {});
+    const zfList = Object.values((state.sectors[secKey] || {}).zariaFeed || {}).sort((a,b)=>(a.date||'')<(b.date||'')?-1:1);
     let sK = 0, sC = 0;
     zfList.forEach(zf => {
       const up = (zf.weight > 0 && zf.cost > 0) ? (zf.cost / zf.weight).toFixed(2) : '-';
@@ -4139,7 +4139,7 @@ function buildSeparatedSheets(sectorKeys) {
   let gZECost = 0;
   sectorKeys.forEach(secKey => {
     const sec = SECTORS[secKey];
-    const zeList = Object.values((state.sectors[secKey] || {}).zariaExpenses || {});
+    const zeList = Object.values((state.sectors[secKey] || {}).zariaExpenses || {}).sort((a,b)=>(a.date||'')<(b.date||'')?-1:1);
     let sC = 0;
     zeList.forEach(ze => { sC += (ze.amount || 0); zeData.push([sec.name, ze.name || '-', (ze.amount || 0).toLocaleString('ar-EG') + ' ج.م', fmtDate(ze.date), '']); });
     if (zeList.length > 0) zeData.push(['📊 إجمالي مصاريف زريعة ' + sec.name, '', sC > 0 ? sC.toLocaleString('ar-EG') + ' ج.م' : '0.00 ج.م', '', '']);
@@ -4156,7 +4156,7 @@ function buildSeparatedSheets(sectorKeys) {
   let gExCost = 0;
   sectorKeys.forEach(secKey => {
     const sec = SECTORS[secKey];
-    const exList = Object.values((state.sectors[secKey] || {}).extras || {});
+    const exList = Object.values((state.sectors[secKey] || {}).extras || {}).sort((a,b)=>(a.date||'')<(b.date||'')?-1:1);
     let sC = 0;
     exList.forEach(e => { sC += (e.amount || 0); exData.push([sec.name, e.name || '-', (e.amount || 0).toLocaleString('ar-EG') + ' ج.م', fmtDate(e.date), '']); });
     if (exList.length > 0) exData.push(['📊 إجمالي مصاريف ' + sec.name, '', sC > 0 ? sC.toLocaleString('ar-EG') + ' ج.م' : '0.00 ج.م', '', '']);
@@ -4173,7 +4173,7 @@ function buildSeparatedSheets(sectorKeys) {
   let gFKg = 0, gFCost = 0;
   sectorKeys.forEach(secKey => {
     const sec = SECTORS[secKey];
-    const fLogs = Object.values(state.logs || {}).filter(l => l && l.type === 'feed_out' && l.sector === secKey);
+    const fLogs = Object.values(state.logs || {}).filter(l => l && l.type === 'feed_out' && l.sector === secKey).sort((a,b)=>{const da=a.date||'',db2=b.date||'';if(da!==db2)return da<db2?-1:1;return(a.ts||0)-(b.ts||0);});
     let sK = 0, sC = 0;
     fLogs.forEach(l => {
       sK += (l.qty || 0); sC += (l.feedCost || 0);
@@ -4193,7 +4193,7 @@ function buildSeparatedSheets(sectorKeys) {
   let gHvRev = 0;
   sectorKeys.forEach(secKey => {
     const sec = SECTORS[secKey];
-    const hvLogs = Object.values(state.logs || {}).filter(l => l && l.type === 'fish_out' && l.sector === secKey);
+    const hvLogs = Object.values(state.logs || {}).filter(l => l && l.type === 'fish_out' && l.sector === secKey).sort((a,b)=>{const da=a.date||'',db2=b.date||'';if(da!==db2)return da<db2?-1:1;return(a.ts||0)-(b.ts||0);});
     let sR = 0;
     hvLogs.forEach(l => {
       sR += (l.totalRevenue || 0);
@@ -4318,8 +4318,8 @@ function exportStorePDF() {
     .filter(function (l) { return l && ['store_in', 'store_edit', 'stock_edit', 'store_delete'].indexOf(l.type) > -1; })
     .sort(function (a, b) {
       var da = a.date || '', db2 = b.date || '';
-      if (da !== db2) return da > db2 ? -1 : 1;
-      return (b.ts || 0) - (a.ts || 0);
+      if (da !== db2) return da < db2 ? -1 : 1;
+      return (a.ts || 0) - (b.ts || 0);
     });
 
   if (addLogs.length === 0) {
@@ -4372,8 +4372,8 @@ function exportFeedPDF() {
     .filter(function (l) { return l && l.type === 'feed_out'; })
     .sort(function (a, b) {
       var da = a.date || '', db2 = b.date || '';
-      if (da !== db2) return da > db2 ? -1 : 1;
-      return (b.ts || 0) - (a.ts || 0);
+      if (da !== db2) return da < db2 ? -1 : 1;
+      return (a.ts || 0) - (b.ts || 0);
     });
 
   var tKg = 0, tCost = 0;
@@ -4416,8 +4416,8 @@ function exportFeedPDF() {
     .filter(function (l) { return l && l.type === 'fish_in'; })
     .sort(function (a, b) {
       var da = a.date || '', db2 = b.date || '';
-      if (da !== db2) return da > db2 ? -1 : 1;
-      return (b.ts || 0) - (a.ts || 0);
+      if (da !== db2) return da < db2 ? -1 : 1;
+      return (a.ts || 0) - (b.ts || 0);
     });
 
   var tCount = 0, tCost2 = 0;
@@ -4468,7 +4468,7 @@ function exportZariaPDF() {
 
   var gQty = 0, gCost = 0;
   Object.entries(SECTORS).forEach(function ([secKey, sec]) {
-    var zList = Object.values((state.sectors[secKey] || {}).zaria || {});
+    var zList = Object.values((state.sectors[secKey] || {}).zaria || {}).sort(function(a,b){var da=a.date||'',db2=b.date||'';if(da!==db2)return da<db2?-1:1;return 0;});
     if (zList.length === 0) return;
     var sQty = 0, sCost = 0;
     zList.forEach(function (z) {
@@ -4517,7 +4517,7 @@ function exportZariaPDF() {
 
   var gKg = 0, gZFCost = 0;
   Object.entries(SECTORS).forEach(function ([secKey, sec]) {
-    var zfList = Object.values((state.sectors[secKey] || {}).zariaFeed || {});
+    var zfList = Object.values((state.sectors[secKey] || {}).zariaFeed || {}).sort(function(a,b){var da=a.date||'',db2=b.date||'';if(da!==db2)return da<db2?-1:1;return 0;});
     if (zfList.length === 0) return;
     var sKg = 0, sCost = 0;
     zfList.forEach(function (zf) {
@@ -4678,8 +4678,8 @@ function exportLogsPDF() {
     return true;
   }).sort(function (a, b) {
     var da = a.date || '', db2 = b.date || '';
-    if (da !== db2) return da > db2 ? -1 : 1;
-    return (b.ts || 0) - (a.ts || 0);
+    if (da !== db2) return da < db2 ? -1 : 1;
+    return (a.ts || 0) - (b.ts || 0);
   });
 
   var sheets = [];
@@ -4837,7 +4837,7 @@ function exportDashboardPDF() {
   Object.entries(SECTORS).forEach(function ([k, sec]) {
     var logs = Object.values(state.logs || {}).filter(function (l) {
       return l && l.type === 'feed_out' && l.sector === k;
-    });
+    }).sort(function(a,b){var da=a.date||'',db2=b.date||'';if(da!==db2)return da<db2?-1:1;return(a.ts||0)-(b.ts||0);});
     if (logs.length === 0) return;
     var sKg = 0, sCost = 0;
     logs.forEach(function (l) {
@@ -4943,8 +4943,8 @@ function exportMovementsPDF() {
     return true;
   }).sort(function (a, b) {
     var da = a.date || '', db2 = b.date || '';
-    if (da !== db2) return da > db2 ? -1 : 1;
-    return (b.ts || 0) - (a.ts || 0);
+    if (da !== db2) return da < db2 ? -1 : 1;
+    return (a.ts || 0) - (b.ts || 0);
   });
 
   var sheets = [];
