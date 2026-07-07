@@ -1027,6 +1027,7 @@ body.viewer-mode #pg-feed-readonly{display:block!important;}
         <div class="sum-chip"><div class="v" id="d-ops">—</div><div class="l">عمليات اليوم</div></div>
         <div class="sum-chip cost-chip"><div class="v" id="d-totalcost">—</div><div class="l">تكلفة الأسماك</div></div>
         <div class="sum-chip feed-cost-chip"><div class="v" id="d-feedcost">—</div><div class="l">تكلفة العلف</div></div>
+        <div class="sum-chip" style="background:rgba(0,229,255,.08);border-color:rgba(0,229,255,.2);"><div class="v" id="d-zariacost" style="color:var(--cyan);">—</div><div class="l">تكلفة الزريعة</div></div>
         <div class="sum-chip harvest-chip"><div class="v" id="d-harvest">—</div><div class="l">إيرادات التصريف</div></div>
         <div class="sum-chip" id="d-pnl-chip"><div class="v" id="d-pnl">—</div><div class="l">صافي الربح/الخسارة</div></div>
       </div>
@@ -1576,10 +1577,10 @@ function sectorTotalCost(secKey){
 function totalFarmCost(){ return Object.keys(SECTORS).reduce((s,k)=>s+sectorTotalCost(k),0); }
 
 function sectorFeedCost(secKey){
-  return Object.values(state.logs).filter(l=>l && l.type==='feed_out' && l.sector===secKey && l.feedCost>0).reduce((s,l)=>s+(l.feedCost||0), 0);
+  return Object.values(state.logs).filter(l=>l && l.type==='feed_out' && l.sector===secKey && l.feedCost>0 && (l.notes||'').indexOf('علف زريعة')===-1).reduce((s,l)=>s+(l.feedCost||0), 0);
 }
 function totalFeedCost(){
-  return Object.values(state.logs).filter(l=>l && l.type==='feed_out' && l.feedCost>0).reduce((s,l)=>s+(l.feedCost||0), 0);
+  return Object.values(state.logs).filter(l=>l && l.type==='feed_out' && l.feedCost>0 && (l.notes||'').indexOf('علف زريعة')===-1).reduce((s,l)=>s+(l.feedCost||0), 0);
 }
 function sectorHarvestRevenue(secKey){
   return Object.values(state.logs).filter(l=>l && l.type==='fish_out' && l.sector===secKey && (l.totalRevenue||0)>0).reduce((s,l)=>s+(l.totalRevenue||0), 0);
@@ -1933,12 +1934,14 @@ function renderZariaFeedForm(k, isPage=false) {
 
 
 function sectorPnL(secKey){
-  const revenue   = sectorHarvestRevenue(secKey);
-  const fishCost  = sectorTotalCost(secKey);
-  const feedCost  = sectorFeedCost(secKey);
-  const extraCost = sectorExtraCost(secKey);
-  const totalCost = fishCost + feedCost + extraCost;
-  return { revenue, fishCost, feedCost, extraCost, totalCost, net: revenue - totalCost };
+  const revenue       = sectorHarvestRevenue(secKey);
+  const fishCost      = sectorTotalCost(secKey);
+  const feedCost      = sectorFeedCost(secKey);
+  const extraCost     = sectorExtraCost(secKey);
+  const zariaCost     = sectorZariaCost(secKey);
+  const zariaFeedCost = sectorZariaFeedCost(secKey) || sectorZariaFeedLogCost(secKey);
+  const totalCost     = fishCost + feedCost + extraCost;
+  return { revenue, fishCost, feedCost, extraCost, zariaCost, zariaFeedCost, totalCost, net: revenue - totalCost };
 }
 async function addExtraExpense(secKey){
   const name = prompt('\u{1F4B8} اسم المصروف (مثال: مواصلات، كهرباء، صيانة):');
@@ -2186,6 +2189,12 @@ function renderDashboard(){
   document.getElementById('d-ops').textContent  = Object.values(state.logs).filter(l=>l&&l.date&&l.date.startsWith(today)).length;
   document.getElementById('d-totalcost').textContent = farmCost>0 ? (farmCost>=1000000?(farmCost/1000000).toFixed(2)+' م': farmCost>=1000?(farmCost/1000).toFixed(1)+' ك': farmCost.toFixed(0))+' ج.م' : '—';
   document.getElementById('d-feedcost').textContent = feedCost>0 ? (feedCost>=1000000?(feedCost/1000000).toFixed(2)+' م': feedCost>=1000?(feedCost/1000).toFixed(1)+' ك': feedCost.toFixed(0))+' ج.م' : '—';
+  // ✅ شيب تكلفة الزريعة المنفصلة (سعر الزريعة + علف الزريعة)
+  const totalZariaC = Object.keys(SECTORS).reduce((s,k)=>s+sectorZariaCost(k),0);
+  const totalZariaFC = Object.keys(SECTORS).reduce((s,k)=>s+(sectorZariaFeedCost(k)||sectorZariaFeedLogCost(k)),0);
+  const totalZariaAll = totalZariaC + totalZariaFC;
+  const zariaEl = document.getElementById('d-zariacost');
+  if(zariaEl) zariaEl.textContent = totalZariaAll>0 ? (totalZariaAll>=1000000?(totalZariaAll/1000000).toFixed(2)+' م': totalZariaAll>=1000?(totalZariaAll/1000).toFixed(1)+' ك': totalZariaAll.toFixed(0))+' ج.م' : '—';
   const harvestEl = document.getElementById('d-harvest');
   if(harvestEl) harvestEl.textContent = harvestRev>0 ? (harvestRev>=1000000?(harvestRev/1000000).toFixed(2)+' م':harvestRev>=1000?(harvestRev/1000).toFixed(1)+' ك':harvestRev.toFixed(0))+' ج.م' : '—';
   const pnlEl = document.getElementById('d-pnl'); const pnlChip = document.getElementById('d-pnl-chip');
@@ -2262,11 +2271,16 @@ function renderPnLCards(){
     const byType={}; hvLogs.forEach(l=>{ const t=(l.fishType&&l.fishType.trim())?l.fishType:'كامل السمك'; if(!byType[t]) byType[t]={rev:0,count:0}; byType[t].rev += l.totalRevenue||0; byType[t].count += 1; });
     const typeTags = Object.entries(byType).map(([t,d])=> `<span style="display:inline-block;margin-left:8px;">${FISH_ICO[t]||'🐟'} ${t}:${d.rev>0?` <b style="color:var(--harvest-color);">${fmtCost(d.rev)}</b>`:''} <span style="color:var(--muted);font-size:9px;">(${d.count} عملية)</span></span>`).join('');
     const pnlClass = p.net>0?'profit':p.net<0?'loss':'even'; const pnlIcon  = p.net>0?'📈 ربح':p.net<0?'📉 خسارة':'⚖️ تعادل';
-    return `<div class="harvest-sec-row"><div class="harvest-sec-name"><div style="background:linear-gradient(135deg,${sec.color}22,${sec.color}11);width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px;">${sec.icon}</div>${sec.name}</div><div class="harvest-grid"><div class="harvest-kpi"><div class="kv" style="color:var(--harvest-color);">${fmtCost(p.revenue)||'—'}</div><div class="kl">إيرادات التصريف</div></div><div class="harvest-kpi"><div class="kv" style="color:var(--feed-cost-color);">${p.totalCost>0?fmtCost(p.totalCost):'—'}</div><div class="kl">تكلفة القطاع الكلية</div></div><div class="harvest-kpi"><div class="kv" style="color:var(--muted);">${hvLogs.length} عمليات</div><div class="kl">مرات الإخراج</div></div></div>${typeTags?`<div style="font-size:10px;color:var(--muted);margin-bottom:7px;line-height:1.8;">${typeTags}</div>`:''}<div class="harvest-pnl ${pnlClass}"><div class="harvest-pnl-lbl">${pnlIcon}</div><div class="harvest-pnl-val">${p.net!==0?fmtCost(Math.abs(p.net)):'صفر'}</div></div></div>`;
+    const zariaLine = (p.zariaCost>0 || p.zariaFeedCost>0) ? `<div style="font-size:10px;color:var(--cyan);margin-bottom:7px;line-height:1.8;">🐟 زريعة: <b style="color:var(--cyan);">${fmtCost(p.zariaCost)}</b> | 🌾 علف الزريعة: <b style="color:var(--feed-cost-color);">${fmtCost(p.zariaFeedCost)}</b> <span style="color:var(--muted);">(منفصل عن القطاع)</span></div>` : '';
+    return `<div class="harvest-sec-row"><div class="harvest-sec-name"><div style="background:linear-gradient(135deg,${sec.color}22,${sec.color}11);width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px;">${sec.icon}</div>${sec.name}</div><div class="harvest-grid"><div class="harvest-kpi"><div class="kv" style="color:var(--harvest-color);">${fmtCost(p.revenue)||'—'}</div><div class="kl">إيرادات التصريف</div></div><div class="harvest-kpi"><div class="kv" style="color:var(--feed-cost-color);">${p.totalCost>0?fmtCost(p.totalCost):'—'}</div><div class="kl">تكلفة القطاع الكلية</div></div><div class="harvest-kpi"><div class="kv" style="color:var(--muted);">${hvLogs.length} عمليات</div><div class="kl">مرات الإخراج</div></div></div>${zariaLine}${typeTags?`<div style="font-size:10px;color:var(--muted);margin-bottom:7px;line-height:1.8;">${typeTags}</div>`:''}<div class="harvest-pnl ${pnlClass}"><div class="harvest-pnl-lbl">${pnlIcon}</div><div class="harvest-pnl-val">${p.net!==0?fmtCost(Math.abs(p.net)):'صفر'}</div></div></div>`;
   }).join('');
   const totalRev  = totalHarvestRevenue(); const totalCost = totalFarmCost() + totalFeedCost(); const totalNet  = totalRev - totalCost;
   const totalClass= totalNet>0?'profit':totalNet<0?'loss':'even'; const totalIcon = totalNet>0?'🏆 إجمالي الربح':totalNet<0?'⚠️ إجمالي الخسارة':'⚖️ تعادل';
-  el.innerHTML=`<div class="harvest-card"><div class="harvest-card-ttl">📈 الربح والخسارة لكل قطاع</div>${rows}<div class="harvest-pnl ${totalClass}" style="margin-top:10px;padding:11px 14px;"><div class="harvest-pnl-lbl" style="font-size:13px;">${totalIcon}</div><div class="harvest-pnl-val" style="font-size:18px;">${totalNet!==0?fmtCost(Math.abs(totalNet)):'صفر'}</div></div></div>`;
+  // إجمالي الزريعة المنفصل
+  const totalZaria = Object.keys(SECTORS).reduce((s,k)=>s+sectorZariaCost(k),0);
+  const totalZariaFeed = Object.keys(SECTORS).reduce((s,k)=>s+(sectorZariaFeedCost(k)||sectorZariaFeedLogCost(k)),0);
+  const zariaSummary = (totalZaria>0 || totalZariaFeed>0) ? `<div style="background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.2);border-radius:9px;padding:9px 13px;margin-top:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;"><div style="font-size:11px;color:var(--cyan);font-weight:700;">🐟 إجمالي تكاليف الزريعة (منفصلة عن القطاعات)</div><div style="font-size:13px;font-weight:900;color:var(--cyan);">${fmtCost(totalZaria)} + ${fmtCost(totalZariaFeed)} = ${fmtCost(totalZaria+totalZariaFeed)} ج.م</div></div>` : '';
+  el.innerHTML=`<div class="harvest-card"><div class="harvest-card-ttl">📈 الربح والخسارة لكل قطاع</div>${rows}${zariaSummary}<div class="harvest-pnl ${totalClass}" style="margin-top:10px;padding:11px 14px;"><div class="harvest-pnl-lbl" style="font-size:13px;">${totalIcon}</div><div class="harvest-pnl-val" style="font-size:18px;">${totalNet!==0?fmtCost(Math.abs(totalNet)):'صفر'}</div></div></div>`;
 }
 
 function renderExtras(k){
@@ -2558,6 +2572,8 @@ function renderSectors(){
     const secCost = sectorTotalCost(k);
     const feedCost = sectorFeedCost(k);
     const extraCost = sectorExtraCost(k);
+    const zCost = sectorZariaCost(k);
+    const zfCost = sectorZariaFeedCost(k) || sectorZariaFeedLogCost(k);
     const totalSectorCost = secCost + feedCost + extraCost;
     const harvestRev = sectorHarvestRevenue(k);
     const secNet = harvestRev - totalSectorCost;
@@ -2571,7 +2587,7 @@ function renderSectors(){
         </div>
       </div>
 
-      <div style="background:rgba(0,0,0,.2); border-radius:9px; padding:10px 15px; margin-top:10px; display:flex; justify-content:space-between; align-items:center;">
+      <div style="background:rgba(0,0,0,.2); border-radius:9px; padding:10px 15px; margin-top:10px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
          <div style="text-align:center;">
             <div style="font-size:10px; color:var(--muted); margin-bottom:3px;">🐟 إجمالي السمك</div>
             <div style="font-size:13px; font-weight:800; color:var(--cost-color);">${fmtCost(secCost)}</div>
@@ -2580,11 +2596,25 @@ function renderSectors(){
             <div style="font-size:10px; color:var(--muted); margin-bottom:3px;">🌿 إجمالي العلف</div>
             <div style="font-size:13px; font-weight:800; color:var(--feed-cost-color);">${fmtCost(feedCost)}</div>
          </div>
-         <div style="text-align:center; border-right:1px solid rgba(255,255,255,0.1); padding-right:15px;">
+         <div style="text-align:center;">
             <div style="font-size:10px; color:var(--cyan); margin-bottom:3px;">💵 القطاع كلفني</div>
             <div style="font-size:14px; font-weight:900; color:var(--cyan);">${fmtCost(totalSectorCost)}</div>
          </div>
       </div>
+      ${(zCost > 0 || zfCost > 0) ? `<div style="background:rgba(0,229,255,.06); border:1px solid rgba(0,229,255,.18); border-radius:9px; padding:8px 15px; margin-top:7px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+         <div style="text-align:center;">
+            <div style="font-size:10px; color:var(--muted); margin-bottom:3px;">🐟 تكلفة الزريعة</div>
+            <div style="font-size:12px; font-weight:800; color:var(--cyan);">${fmtCost(zCost)}</div>
+         </div>
+         <div style="text-align:center;">
+            <div style="font-size:10px; color:var(--muted); margin-bottom:3px;">🌾 علف الزريعة</div>
+            <div style="font-size:12px; font-weight:800; color:var(--feed-cost-color);">${fmtCost(zfCost)}</div>
+         </div>
+         <div style="text-align:center; border-right:1px solid rgba(0,229,255,.2); padding-right:15px;">
+            <div style="font-size:10px; color:var(--cyan); margin-bottom:3px;">🐟 إجمالي الزريعة</div>
+            <div style="font-size:13px; font-weight:900; color:var(--cyan);">${fmtCost(zCost + zfCost)}</div>
+         </div>
+      </div>` : ''}
 
       <div class="sec-exp ${isExp?'open':''}" id="se-${k}">
         <div class="fish-list">
