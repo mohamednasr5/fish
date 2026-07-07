@@ -1691,6 +1691,9 @@ function sectorZariaFeedKg(secKey){
   const zf = (state.sectors[secKey]||{}).zariaFeed || {};
   return Object.values(zf).reduce((s,e)=> s+(e.weight||0), 0);
 }
+function sectorFeedKg(secKey){
+  return Object.values(state.logs).filter(l=>l && l.type==='feed_out' && l.sector===secKey && (l.notes||'').indexOf('علف زريعة')===-1).reduce((s,l)=>s+(l.qty||0), 0);
+}
 function toggleZariaFeedForm(k){
   var f = document.getElementById('zariafeed-form-'+k);
   if(f) f.style.display = f.style.display==='none' ? 'block' : 'none';
@@ -2574,6 +2577,8 @@ function renderSectors(){
     const extraCost = sectorExtraCost(k);
     const zCost = sectorZariaCost(k);
     const zfCost = sectorZariaFeedCost(k) || sectorZariaFeedLogCost(k);
+    const zfKg = sectorZariaFeedKg(k);
+    const feedKg = sectorFeedKg(k);
     const totalSectorCost = secCost + feedCost + extraCost;
     const harvestRev = sectorHarvestRevenue(k);
     const secNet = harvestRev - totalSectorCost;
@@ -2595,6 +2600,7 @@ function renderSectors(){
          <div style="text-align:center;">
             <div style="font-size:10px; color:var(--muted); margin-bottom:3px;">🌿 إجمالي العلف</div>
             <div style="font-size:13px; font-weight:800; color:var(--feed-cost-color);">${fmtCost(feedCost)}</div>
+            <div style="font-size:9px; color:var(--muted); margin-top:1px;">${feedKg>0 ? feedKg.toLocaleString('ar-EG')+' كجم' : '—'}</div>
          </div>
          <div style="text-align:center;">
             <div style="font-size:10px; color:var(--cyan); margin-bottom:3px;">💵 القطاع كلفني</div>
@@ -2609,6 +2615,7 @@ function renderSectors(){
          <div style="text-align:center;">
             <div style="font-size:10px; color:var(--muted); margin-bottom:3px;">🌾 علف الزريعة</div>
             <div style="font-size:12px; font-weight:800; color:var(--feed-cost-color);">${fmtCost(zfCost)}</div>
+            <div style="font-size:9px; color:var(--muted); margin-top:1px;">${zfKg>0 ? zfKg.toLocaleString('ar-EG')+' كجم' : '—'}</div>
          </div>
          <div style="text-align:center; border-right:1px solid rgba(0,229,255,.2); padding-right:15px;">
             <div style="font-size:10px; color:var(--cyan); margin-bottom:3px;">🐟 إجمالي الزريعة</div>
