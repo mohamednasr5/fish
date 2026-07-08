@@ -5130,6 +5130,32 @@ async function resetAllProgramData() {
 }
 
 // ══════════════════════════════════════════════════════
+// دعم لوحة المفاتيح الفيزيائية لإدخال كلمة السر
+// ══════════════════════════════════════════════════════
+document.addEventListener('keydown', function(e) {
+  // يعمل فقط عندما شاشة الدخول ظاهرة
+  const loginScreen = document.getElementById('login-screen');
+  if (!loginScreen || loginScreen.style.display === 'none') return;
+
+  // إذا كان التركيز على حقل الإدخال اليدوي، لا نتدخل
+  if (document.activeElement && document.activeElement.id === 'manual-pw') return;
+
+  if (e.key >= '0' && e.key <= '9') {
+    e.preventDefault();
+    pinKey(e.key);
+  } else if (e.key === 'Backspace' || e.key === 'Delete') {
+    e.preventDefault();
+    pinDel();
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    checkPin();
+  } else if (e.key === 'Escape') {
+    e.preventDefault();
+    pinClear();
+  }
+});
+
+// ══════════════════════════════════════════════════════
 // expose to global scope for inline HTML onclick handlers
 // ══════════════════════════════════════════════════════
 window.pinKey          = typeof pinKey          !== 'undefined' ? pinKey          : window.pinKey;
